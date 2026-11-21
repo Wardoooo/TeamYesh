@@ -136,7 +136,7 @@ function boot() {
   setInterval(() => {
     chrome.runtime.sendMessage({ type: "tickCheck" });
     chrome.runtime.sendMessage({ type: "getState" }, (result) => {
-      if (result?.state) paintTime(result.state);
+      if (result?.state) render(result.state);
     });
   }, 1000);
 
@@ -154,6 +154,7 @@ function boot() {
     frame.hidden = !live;
     if (!live) panel.hidden = true;
     paintTime(state);
+    stage.dataset.phase = state.phase;
     bright.value = String(state.brightness || 1);
 
     const group = GROUPS[state.phase] || [];
@@ -174,6 +175,7 @@ function boot() {
   }
 
   function paintTime(state) {
+    paintFrame(state);
     if (!state.endsAt) {
       time.textContent = "00:00:00";
       return;
@@ -184,6 +186,23 @@ function boot() {
     const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
     const seconds = String(total % 60).padStart(2, "0");
     time.textContent = `${hours}:${minutes}:${seconds}`;
+  }
+
+  function paintFrame(state) {
+    const thin = 8;
+    let progress = 0;
+    if (["captcha", "browsing"].includes(state.phase) && state.endsAt) {
+      // Grow after the paid ads period, reaching the maximum at 10s left.
+      const start = Number(state.adsUntil) || Date.now();
+      const finish = Number(state.endsAt) - 10000;
+      progress = finish <= start
+        ? 1
+        : Math.max(0, Math.min(1, (Date.now() - start) / (finish - start)));
+    }
+    const horizontal = thin + Math.max(0, window.innerWidth * 0.44 - thin) * progress;
+    const vertical = thin + Math.max(0, window.innerHeight * 0.44 - thin) * progress;
+    frame.style.setProperty("--frame-x", `${horizontal}px`);
+    frame.style.setProperty("--frame-y", `${vertical}px`);
   }
 
   function showToast(text) {
