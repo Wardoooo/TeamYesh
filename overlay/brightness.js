@@ -36,12 +36,18 @@ export function mount(stage, state) {
   function paint(value) {
     const brightness = value ?? 1;
     shade.style.opacity = String(1 - brightness / 100);
-    wheel.textContent = `↑ Scroll up · Brightness ${brightness}%`;
+    wheel.textContent = `Scroll up or press ↑ · Brightness ${brightness}%`;
   }
 
   function increase() {
     chrome.runtime.sendMessage({ type: "increaseBrightness" });
   }
+
+  wheel.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp") return;
+  event.preventDefault();
+  increase();
+});
 
   wheel.addEventListener("wheel", (event) => {
     if (event.ctrlKey || event.deltaY === 0) return;
