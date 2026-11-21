@@ -32,6 +32,33 @@ textarea { display: block; width: 100%; resize: vertical; padding: 12px; margin-
 #error { padding: 12px; border: 1px solid #a00000; color: #a00000; }
 h1[tabindex="-1"]:focus { outline: none; }
 
+.ending-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.ending-header .brand { margin: 8px 0; }
+.receipt { border: 2px dashed #555; padding: clamp(12px, 4vw, 20px); margin: 24px 0; background: #fafafa; }
+.receipt summary { font-weight: bold; cursor: pointer; font-size: 20px; }
+.receipt dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 16px;
+  font: clamp(12px, 3vw, 14px)/1.5 "Courier New", monospace;
+  overflow-wrap: anywhere;
+}
+.receipt dt { font-weight: bold; }
+.receipt dd { margin: 0; text-align: right; }
+.receipt .receipt-total { border-top: 1px dashed #555; padding-top: 10px; font-weight: bold; }
+.receipt-note { font-size: 13px; border-top: 1px dashed #777; padding-top: 14px; }
+.correction-stars { display: flex; gap: 6px; font-size: clamp(28px, 7vw, 56px); margin: 28px 0; }
+.correction-stars span { color: #bbb; }
+.correction-stars .already-filled { color: #8a5b00; }
+.correction-stars .being-corrected { animation: force-star 220ms var(--delay) both; }
+@keyframes force-star {
+  55% { color: #8a5b00; transform: scale(1.24); }
+  to { color: #8a5b00; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .correction-stars .being-corrected { animation: none; color: #8a5b00; }
+}
+
 /* Show the Skeleton ratings mockup as the backdrop while the live form stays usable. */
 body:has(section[data-screen="survey"]:not([hidden])) {
   min-height: 100vh;

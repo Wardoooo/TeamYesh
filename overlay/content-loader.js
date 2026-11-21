@@ -184,7 +184,13 @@ const ADS = [
   { kind: "image", src: "assets/img/photo-1557858310-9052820906f7.avif" }
 ];
 
-return { ADS };
+const SCAM_VIDEO = {
+  kind: "video",
+  src: "assets/videos/scamvideo.mp4",
+  fullscreen: true
+};
+
+return { ADS, SCAM_VIDEO };
 })();
 modules["shared/config.js"] = (() => {
 // Owner: M1
@@ -192,6 +198,8 @@ modules["shared/config.js"] = (() => {
 // into your own file, or the phases will drift apart.
 
 const CONFIG = {
+  // One peso is 60 seconds. Five pesos is 3 minutes. Ten pesos is 5 minutes.
+  // The total decides the rate. Reaching 5 or 10 replaces the stacked minutes.
   secondsPerCoin: 60,
   startingCoins: 5,
   codeLength: 6,
@@ -214,6 +222,19 @@ const CONFIG = {
   aiProxyUrl: "",
   sounds: ["coin", "jingle", "buzz", "boot", "ding"]
 };
+
+// Time follows the total inserted, not each coin added on its own.
+// 1–4 pesos: 60 seconds each.
+// 5–9 pesos: 3 minutes. Five ₱1 coins drop back to 3 minutes, not 5.
+// Each full 10 pesos is 5 minutes, then the leftover uses the same rule.
+// ₱5 + five ₱1 is ₱10, so 5 minutes. ₱11 is 5 minutes + 60 seconds.
+function secondsForPesos(total) {
+  const pesos = Math.max(0, Math.floor(Number(total) || 0));
+  const bundles = Math.floor(pesos / 10);
+  const rest = pesos % 10;
+  const restSeconds = rest >= 5 ? 3 * 60 : rest * CONFIG.secondsPerCoin;
+  return bundles * 5 * 60 + restSeconds;
+}
 
 const PHASES = [
   "store",
@@ -245,7 +266,7 @@ const STAT_KEYS = [
 // Messages (send these to background.js; do not call another module):
 // getState
 // entered            { page: "store" | "purse" | "portal" }
-// insertCoin         { amount: 1 | 5 | 10 }  each peso adds secondsPerCoin
+// insertCoin         { amount: 1 | 5 | 10 }  time comes from secondsForPesos(total)
 // startSession       { code }
 // captchaDone
 // pageLoaded         { url }
@@ -260,10 +281,10 @@ const STAT_KEYS = [
 // Sound is not a message. Call play() from shared/sfx.js on the page that
 // received the click. Files live in assets/sounds/<name>.mp3.
 
-return { CONFIG, PHASES, ENDING_PHASES, STAT_KEYS };
+return { CONFIG, secondsForPesos, PHASES, ENDING_PHASES, STAT_KEYS };
 })();
 modules["overlay/ads.js"] = (() => {
-const { ADS } = modules["overlay/ads-data.js"];
+const { ADS, SCAM_VIDEO } = modules["overlay/ads-data.js"];
 const { CONFIG } = modules["shared/config.js"];
 const { play } = modules["shared/sfx.js"];
 
@@ -285,12 +306,17 @@ let wait = 0;
 let pulse = 0;
 let rotate = 0;
 let fledAt = 0;
+let videoTimer = 0;
+let videoDismissals = 0;
+let adsDeadline = 0;
 
 function mount(stage, state) {
   unmount();
 
   mode = state.phase === "browsing" ? "browsing" : "ads";
   skips = 0;
+  videoDismissals = 0;
+  adsDeadline = Number(state.adsUntil) || Date.now() + 60_000;
 
   root = document.createElement("div");
   root.className = "ads-root";
@@ -304,6 +330,7 @@ function mount(stage, state) {
 
   if (mode === "ads") {
     for (let count = 0; count < 3; count += 1) showAd();
+    scheduleScamVideo();
     return;
   }
 
@@ -323,23 +350,26 @@ function unmount() {
   clearTimeout(wait);
   clearInterval(pulse);
   clearTimeout(rotate);
+  clearTimeout(videoTimer);
 
   wait = 0;
   pulse = 0;
   rotate = 0;
+  videoTimer = 0;
 
   root?.remove();
   root = null;
 }
 
-function showAd() {
+function showAd(adOverride = null) {
   if (!root || !ADS.length) return;
 
   clearTimeout(rotate);
 
-  const ad = pickAd();
+  const ad = adOverride || pickAd();
   const card = document.createElement("article");
   card.className = "ads-card";
+  if (ad.fullscreen) card.dataset.fullscreen = "true";
 
   paintShell(card);
   placeAd(card);
@@ -370,9 +400,29 @@ function showAd() {
   dock.append(note, row);
   card.append(exit, media, dock);
 
+  if (ad.fullscreen) {
+    root.querySelectorAll("video").forEach(video => video.pause());
+    root.replaceChildren();
+  }
+
   appendCard(card);
   sendStat("adsSeen");
   startSound(ad, media);
+
+  if (ad === SCAM_VIDEO) {
+    media.loop = false;
+    media.addEventListener("click", () => {
+      videoDismissals += 1;
+      clearTimeout(rotate);
+      showAd();
+      scheduleScamVideo();
+    });
+    media.addEventListener("ended", () => {
+      clearTimeout(rotate);
+      showAd();
+      scheduleScamVideo();
+    }, { once: true });
+  }
 
   card.addEventListener("pointermove", event => {
     if (covering(exit, event) || !near(exit, event)) return;
@@ -415,7 +465,21 @@ function showAd() {
     note.textContent = "Premium unlocked. Nothing closed.";
   });
 
-  rotate = setTimeout(showAd, CONFIG.adHoldMs);
+  if (!ad.fullscreen) rotate = setTimeout(showAd, CONFIG.adHoldMs);
+}
+
+function scheduleScamVideo() {
+  clearTimeout(videoTimer);
+  const remaining = adsDeadline - Date.now();
+  const frequency = Math.pow(0.65, videoDismissals);
+  const maxDelay = Math.min(45_000 * frequency, remaining - 2_000);
+  if (maxDelay <= 0) return;
+  const minDelay = Math.min(5_000 * frequency, maxDelay);
+  const delay = minDelay + Math.random() * (maxDelay - minDelay);
+  videoTimer = setTimeout(() => {
+    videoTimer = 0;
+    showAd(SCAM_VIDEO);
+  }, delay);
 }
 
 function showBrowsingCard() {
@@ -537,6 +601,12 @@ function appendCard(card) {
 }
 
 function placeAd(card, placed = [...root.children]) {
+  if (card.dataset.fullscreen === "true") {
+    card.style.inset = "0";
+    card.style.width = "100vw";
+    card.style.height = "100vh";
+    return;
+  }
   const margin = 12;
   const top = Math.min(72, window.innerHeight * 0.12);
   const width = Math.max(1, Math.min(420, window.innerWidth * 0.44));
@@ -604,7 +674,7 @@ function buildMedia(ad) {
 
   if (ad.kind === "video") {
     media.autoplay = true;
-    media.loop = true;
+    media.loop = !ad.fullscreen;
     media.playsInline = true;
     media.muted = true;
     media.controls = true;
@@ -967,83 +1037,90 @@ function showChallenge() {
 return { mount, unmount };
 })();
 modules["overlay/brightness.js"] = (() => {
-  // Owner: M3
-  let cleanup = null;
+// Owner: M3
+let cleanup = null;
 
-  function mount(stage, state) {
-    unmount();
+function mount(stage, state) {
+  unmount();
 
-    const shade = document.createElement("div");
-    shade.setAttribute("aria-hidden", "true");
-    Object.assign(shade.style, {
-      position: "absolute",
-      inset: "0",
-      zIndex: "1000",
-      backgroundColor: "black",
-      pointerEvents: "none"
-    });
+  const shade = document.createElement("div");
+  shade.setAttribute("aria-hidden", "true");
+  Object.assign(shade.style, {
+    position: "absolute",
+    inset: "0",
+    zIndex: "1000",
+    backgroundColor: "black",
+    pointerEvents: "none"
+  });
 
-    const wheel = document.createElement("button");
-    wheel.type = "button";
-    wheel.title = "Scroll up to increase brightness";
-    Object.assign(wheel.style, {
-      position: "absolute",
-      left: "50%",
-      bottom: "44px",
-      transform: "translateX(-50%)",
-      zIndex: "1001",
-      pointerEvents: "auto",
-      padding: "10px 18px",
-      border: "3px solid #e2b34a",
-      borderRadius: "24px",
-      background: "#19140e",
-      color: "#fff",
-      font: "bold 14px system-ui, sans-serif",
-      cursor: "ns-resize"
-    });
+  const wheel = document.createElement("button");
+  wheel.type = "button";
+  wheel.title = "Scroll up to increase brightness";
+  Object.assign(wheel.style, {
+    position: "absolute",
+    left: "50%",
+    bottom: "44px",
+    transform: "translateX(-50%)",
+    zIndex: "1001",
+    pointerEvents: "auto",
+    padding: "10px 18px",
+    border: "3px solid #e2b34a",
+    borderRadius: "24px",
+    background: "#19140e",
+    color: "#fff",
+    font: "bold 14px system-ui, sans-serif",
+    cursor: "ns-resize"
+  });
 
-    function paint(value) {
-      const brightness = value ?? 1;
-      shade.style.opacity = String(1 - brightness / 100);
-      wheel.textContent = `↑ Scroll up · Brightness ${brightness}%`;
-    }
-
-    function increase() {
-      chrome.runtime.sendMessage({ type: "increaseBrightness" });
-    }
-
-    wheel.addEventListener("wheel", (event) => {
-      if (event.ctrlKey || event.deltaY === 0) return;
-      event.preventDefault();
-      if (event.deltaY < 0) increase();
-    }, { passive: false });
-
-    wheel.addEventListener("click", increase);
-
-    function onStorageChange(changes, area) {
-      const updated = changes.state?.newValue;
-      if (area === "local" && updated) {
-        paint(updated.brightness);
-      }
-    }
-
-    paint(state.brightness);
-    stage.append(shade, wheel);
-    chrome.storage.onChanged.addListener(onStorageChange);
-
-    cleanup = () => {
-      chrome.storage.onChanged.removeListener(onStorageChange);
-      shade.remove();
-      wheel.remove();
-    };
+  function paint(value) {
+    const brightness = value ?? 1;
+    shade.style.opacity = String(1 - brightness / 100);
+    wheel.textContent = `Scroll up or press ↑ · Brightness ${brightness}%`;
   }
 
-  function unmount() {
-    cleanup?.();
-    cleanup = null;
+  function increase() {
+    chrome.runtime.sendMessage({ type: "increaseBrightness" });
   }
 
-  return { mount, unmount };
+  wheel.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp") return;
+  event.preventDefault();
+  increase();
+});
+
+  wheel.addEventListener("wheel", (event) => {
+    if (event.ctrlKey || event.deltaY === 0) return;
+    event.preventDefault();
+
+    if (event.deltaY < 0) increase();
+  }, { passive: false });
+
+  // Clicking, Enter, and Space also work.
+  wheel.addEventListener("click", increase);
+
+  function onStorageChange(changes, area) {
+    const updated = changes.state?.newValue;
+    if (area === "local" && updated) {
+      paint(updated.brightness);
+    }
+  }
+
+  paint(state.brightness);
+  stage.append(shade, wheel);
+  chrome.storage.onChanged.addListener(onStorageChange);
+
+  cleanup = () => {
+    chrome.storage.onChanged.removeListener(onStorageChange);
+    shade.remove();
+    wheel.remove();
+  };
+}
+
+function unmount() {
+  cleanup?.();
+  cleanup = null;
+}
+return { mount, unmount };
 })();
 modules["overlay/loading.js"] = (() => {
 // Owner: M4
@@ -1271,6 +1348,7 @@ const GROUPS = {
     [mountChat, unmountChat]
   ]
 };
+
 if (!window.__pisonetShell) {
   window.__pisonetShell = true;
   boot();

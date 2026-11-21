@@ -38,7 +38,7 @@
         "shared/*.js",
         "assets/sounds/*",
         "assets/img/*",
-        "assets/video/*"
+        "assets/videos/*"
       ],
       "matches": [
         "<all_urls>"

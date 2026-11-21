@@ -1,0 +1,17 @@
+@media (prefers-reduced-motion: no-preference) {
+  nav a, .topbar a {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: center calc(100% - 4px);
+    background-size: 0 1px;
+    transition: background-size 240ms ease-out;
+  }
+
+  nav a:hover, nav a:focus-visible, .topbar a:hover, .topbar a:focus-visible {
+    background-size: 70% 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lcd, .lcd *, .led, .led * { animation: none !important; }
+}

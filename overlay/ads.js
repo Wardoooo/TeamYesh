@@ -1,4 +1,4 @@
-import { ADS } from "./ads-data.js";
+import { ADS, SCAM_VIDEO } from "./ads-data.js";
 import { CONFIG } from "../shared/config.js";
 import { play } from "../shared/sfx.js";
 
@@ -20,12 +20,17 @@ let wait = 0;
 let pulse = 0;
 let rotate = 0;
 let fledAt = 0;
+let videoTimer = 0;
+let videoDismissals = 0;
+let adsDeadline = 0;
 
 export function mount(stage, state) {
   unmount();
 
   mode = state.phase === "browsing" ? "browsing" : "ads";
   skips = 0;
+  videoDismissals = 0;
+  adsDeadline = Number(state.adsUntil) || Date.now() + 60_000;
 
   root = document.createElement("div");
   root.className = "ads-root";
@@ -39,6 +44,7 @@ export function mount(stage, state) {
 
   if (mode === "ads") {
     for (let count = 0; count < 3; count += 1) showAd();
+    scheduleScamVideo();
     return;
   }
 
@@ -58,23 +64,26 @@ export function unmount() {
   clearTimeout(wait);
   clearInterval(pulse);
   clearTimeout(rotate);
+  clearTimeout(videoTimer);
 
   wait = 0;
   pulse = 0;
   rotate = 0;
+  videoTimer = 0;
 
   root?.remove();
   root = null;
 }
 
-function showAd() {
+function showAd(adOverride = null) {
   if (!root || !ADS.length) return;
 
   clearTimeout(rotate);
 
-  const ad = pickAd();
+  const ad = adOverride || pickAd();
   const card = document.createElement("article");
   card.className = "ads-card";
+  if (ad.fullscreen) card.dataset.fullscreen = "true";
 
   paintShell(card);
   placeAd(card);
@@ -105,9 +114,29 @@ function showAd() {
   dock.append(note, row);
   card.append(exit, media, dock);
 
+  if (ad.fullscreen) {
+    root.querySelectorAll("video").forEach(video => video.pause());
+    root.replaceChildren();
+  }
+
   appendCard(card);
   sendStat("adsSeen");
   startSound(ad, media);
+
+  if (ad === SCAM_VIDEO) {
+    media.loop = false;
+    media.addEventListener("click", () => {
+      videoDismissals += 1;
+      clearTimeout(rotate);
+      showAd();
+      scheduleScamVideo();
+    });
+    media.addEventListener("ended", () => {
+      clearTimeout(rotate);
+      showAd();
+      scheduleScamVideo();
+    }, { once: true });
+  }
 
   card.addEventListener("pointermove", event => {
     if (covering(exit, event) || !near(exit, event)) return;
@@ -150,7 +179,21 @@ function showAd() {
     note.textContent = "Premium unlocked. Nothing closed.";
   });
 
-  rotate = setTimeout(showAd, CONFIG.adHoldMs);
+  if (!ad.fullscreen) rotate = setTimeout(showAd, CONFIG.adHoldMs);
+}
+
+function scheduleScamVideo() {
+  clearTimeout(videoTimer);
+  const remaining = adsDeadline - Date.now();
+  const frequency = Math.pow(0.65, videoDismissals);
+  const maxDelay = Math.min(45_000 * frequency, remaining - 2_000);
+  if (maxDelay <= 0) return;
+  const minDelay = Math.min(5_000 * frequency, maxDelay);
+  const delay = minDelay + Math.random() * (maxDelay - minDelay);
+  videoTimer = setTimeout(() => {
+    videoTimer = 0;
+    showAd(SCAM_VIDEO);
+  }, delay);
 }
 
 function showBrowsingCard() {
@@ -272,6 +315,12 @@ function appendCard(card) {
 }
 
 function placeAd(card, placed = [...root.children]) {
+  if (card.dataset.fullscreen === "true") {
+    card.style.inset = "0";
+    card.style.width = "100vw";
+    card.style.height = "100vh";
+    return;
+  }
   const margin = 12;
   const top = Math.min(72, window.innerHeight * 0.12);
   const width = Math.max(1, Math.min(420, window.innerWidth * 0.44));
@@ -339,7 +388,7 @@ function buildMedia(ad) {
 
   if (ad.kind === "video") {
     media.autoplay = true;
-    media.loop = true;
+    media.loop = !ad.fullscreen;
     media.playsInline = true;
     media.muted = true;
     media.controls = true;
