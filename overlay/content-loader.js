@@ -472,9 +472,11 @@ function scheduleScamVideo() {
   clearTimeout(videoTimer);
   const remaining = adsDeadline - Date.now();
   const frequency = Math.pow(0.65, videoDismissals);
-  const maxDelay = Math.min(45_000 * frequency, remaining - 2_000);
+  // Keep the first appearance early enough to be obvious, then shorten the
+  // random window again each time the viewer dismisses the video.
+  const maxDelay = Math.min(15_000 * frequency, remaining - 500);
   if (maxDelay <= 0) return;
-  const minDelay = Math.min(5_000 * frequency, maxDelay);
+  const minDelay = Math.min(3_000 * frequency, maxDelay);
   const delay = minDelay + Math.random() * (maxDelay - minDelay);
   videoTimer = setTimeout(() => {
     videoTimer = 0;

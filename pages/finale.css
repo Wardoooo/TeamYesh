@@ -83,3 +83,54 @@ body:has(section[data-screen="survey"]:not([hidden])) [data-screen="survey"] {
   background: rgba(255, 255, 255, .94);
   box-shadow: 0 16px 48px rgba(0, 0, 0, .35);
 }
+
+body:has(section[data-screen="goodbye"]:not([hidden])) {
+  min-height: 100vh;
+  padding: 0;
+  background: #111;
+  color: #fff;
+}
+body:has(section[data-screen="goodbye"]:not([hidden])) .ending {
+  display: grid;
+  place-items: stretch;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+body:has(section[data-screen="goodbye"]:not([hidden])) [data-screen="goodbye"] {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: clamp(24px, 6vw, 72px);
+  color: #fff;
+  text-align: center;
+}
+[data-screen="goodbye"]::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: rgba(0, 0, 0, .48);
+  content: "";
+}
+.goodbye-background {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+[data-screen="goodbye"] h1,
+[data-screen="goodbye"] p,
+[data-screen="goodbye"] button {
+  position: relative;
+}
