@@ -31,3 +31,28 @@ textarea { display: block; width: 100%; resize: vertical; padding: 12px; margin-
 .actions { display: flex; flex-wrap: wrap; gap: 12px; }
 #error { padding: 12px; border: 1px solid #a00000; color: #a00000; }
 h1[tabindex="-1"]:focus { outline: none; }
+
+/* Show the Skeleton ratings mockup as the backdrop while the live form stays usable. */
+body:has(section[data-screen="survey"]:not([hidden])) {
+  min-height: 100vh;
+  padding: 0;
+  background: #17151b url("../assets/img/Skeleton%20(10).png") center / cover fixed no-repeat;
+}
+body:has(section[data-screen="survey"]:not([hidden])) .ending {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: clamp(20px, 5vw, 64px);
+  border: 0;
+  background: transparent;
+}
+body:has(section[data-screen="survey"]:not([hidden])) [data-screen="survey"] {
+  width: min(780px, 100%);
+  padding: clamp(24px, 5vw, 48px);
+  border: 2px solid rgba(255, 255, 255, .8);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .35);
+}
