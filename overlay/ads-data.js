@@ -11,12 +11,7 @@ export const ADS = [
 
 export const SCAM_VIDEO = {
   kind: "video",
-<<<<<<< HEAD
   src: "assets/videos/scamvideo.mp4"
-=======
-  src: "assets/videos/scamvideo.mp4",
-  fullscreen: false
->>>>>>> eb9433a0d9f2ca2dbd95b661f3a94d367abbf347
 };
 
 // Bonus cards for X clicks. All content stays inside the extension.
