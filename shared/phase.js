@@ -20,7 +20,7 @@ const PIPE = [
 const LIVE = ["ads", "captcha", "browsing", "finale"];
 const BRIGHTNESS_PHASES = ["ads", "captcha", "browsing"];
 const BRIGHTNESS_DROP_INTERVAL_MS = 1000;
-const BRIGHTNESS_DROP_PER_INTERVAL = 2;
+const BRIGHTNESS_DROP_PER_INTERVAL = 5;
 
 export function emptyStats() {
   return {
