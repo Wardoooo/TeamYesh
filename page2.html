@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Piso WiFi</title>
+  <link rel="stylesheet" href="css/naive.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <link rel="stylesheet" href="css/motion.css">
+  <script defer src="assets/vendor/gsap.min.js"></script>
+  <script defer src="assets/vendor/ScrollTrigger.min.js"></script>
+  <script defer src="shared/motion.js"></script>
+</head>
+<body class="shop-legacy">
+  <div class="page">
+    <div class="topbar">
+      <div>Piso Wifi</div>
+      <a href="index.html">close</a>
+    </div>
+
+    <div class="machine-layout">
+      <div class="kiosk">
+        <div class="kiosk-title">PISO WIFI</div>
+        <div class="kiosk-body">
+          <a class="slot" href="page3.html" aria-label="Coin slot"><span></span></a>
+          <div class="screen"></div>
+          <div class="return-slot"></div>
+        </div>
+        <div class="steps">
+          <div class="step s1">
+            <strong>STEP 1</strong>
+            Connect your phone to the Piso WiFi network.
+          </div>
+          <div class="step s2">
+            <strong>STEP 2</strong>
+            Insert a coin. A code prints for the next page.
+          </div>
+          <div class="step s3">
+            <strong>STEP 3</strong>
+            Type the code and start browsing. Enjoy.
+          </div>
+        </div>
+        <div class="kiosk-foot">NEGROS PISO Wi-Fi</div>
+      </div>
+
+      <div class="rates">
+        <h2>rates</h2>
+        <p>₱1 — 60 seconds</p>
+        <p>₱5 — 3 minutes</p>
+        <p>₱10 — 5 minutes</p>
+      </div>
+
+      <div class="coin-row">
+        <div class="coin-label">COINS</div>
+        <a class="coin" href="page3.html" aria-label="Insert 5 piso coin">
+          <span>5<small>PISO</small></span>
+        </a>
+      </div>
+      <div class="earn">earn a coin</div>
+    </div>
+  </div>
+  <script type="module" src="pages/chat.js"></script>
+  <script type="module" src="shared/shop-chrome.js"></script>
+</body>
+</html>

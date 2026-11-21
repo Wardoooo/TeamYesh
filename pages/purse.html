@@ -5,28 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Piso WiFi — Machine</title>
   <link rel="stylesheet" href="purse.css">
+  <link rel="stylesheet" href="../css/shop.css">
   <link rel="stylesheet" href="../css/motion.css">
   <script defer src="../assets/vendor/gsap.min.js"></script>
   <script defer src="../assets/vendor/ScrollTrigger.min.js"></script>
   <script defer src="../shared/motion.js"></script>
 </head>
-<body>
+<body class="purse-page">
   <div class="tools" id="tools"></div>
   <main class="stage">
-    <img src="../assets/img/5.png" alt="YESH NA YESH Piso WiFi machine and rates">
+    <img src="../assets/img/5.png" width="1920" height="1080" alt="YESH NA YESH Piso WiFi machine and rates">
     <div class="led" id="led" aria-live="polite">
       <div>YESH NA YESH WIFI</div>
       <div class="code" id="led-code" hidden></div>
       <div id="led-time">PHP 0.00 = 0:00</div>
     </div>
     <div class="slot" id="slot" aria-label="Coin slot"></div>
-    <div class="peso p1" data-amount="1" role="button" aria-label="One peso from the tarpaulin. Sixty seconds until the total reaches five pesos.">₱1</div>
-    <div class="peso p5" data-amount="5" role="button" aria-label="Five peso coin. Three minutes.">₱5</div>
-    <div class="peso p10" data-amount="10" role="button" aria-label="Ten peso coin. Five minutes.">₱10</div>
+    <div class="peso p1" data-amount="1" role="button" tabindex="0" aria-label="One peso from the tarpaulin. Sixty seconds until the total reaches five pesos.">₱1</div>
+    <div class="peso p5" data-amount="5" role="button" tabindex="0" aria-label="Five peso coin. Three minutes.">₱5</div>
+    <div class="peso p10" data-amount="10" role="button" tabindex="0" aria-label="Ten peso coin. Five minutes.">₱10</div>
     <button type="button" class="connect" id="connect">connect</button>
   </main>
-  <p class="toast"></p>
+  <aside class="machine-tray" aria-labelledby="tray-title">
+    <h1 id="tray-title">Hulog ng barya</h1>
+    <p>Insert a coin to get your WiFi code.</p>
+    <div class="tray-coins" aria-label="Insert a coin">
+      <button type="button" data-insert="1">₱1</button>
+      <button type="button" data-insert="5">₱5</button>
+      <button type="button" data-insert="10">₱10</button>
+    </div>
+    <p id="tray-display" class="tray-display" aria-live="polite">₱0.00 · 0:00</p>
+    <button type="button" id="tray-connect" class="shop-button">Connect</button>
+  </aside>
+  <p class="toast" role="status"></p>
   <script type="module" src="purse.js"></script>
   <script type="module" src="chat.js"></script>
+  <script type="module" src="../shared/shop-chrome.js"></script>
 </body>
 </html>

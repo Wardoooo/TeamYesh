@@ -7,6 +7,8 @@ mountSoundControl(document.getElementById("sound-controls"));
 const status = document.getElementById("status");
 const error = document.getElementById("error");
 const form = document.getElementById("review-form");
+const goodbyeVideo = document.querySelector(".goodbye-background");
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let latest = null;
 let currentScreen = "";
 let declined = false;
@@ -19,9 +21,23 @@ function show(screen) {
   });
   if (screen !== currentScreen) {
     currentScreen = screen;
+    if (screen === "goodbye" && !reducedMotion.matches) {
+      goodbyeVideo.play().then(() => {
+        if (currentScreen === "goodbye") goodbyeVideo.hidden = false;
+      }).catch(() => { goodbyeVideo.hidden = true; });
+    } else {
+      goodbyeVideo.pause();
+      goodbyeVideo.hidden = true;
+    }
     if (screen === "diploma" || screen === "report") play("ding");
     document.querySelector(`[data-screen="${screen}"] h1`)?.focus();
   }
+}
+
+function showIdle(message) {
+  status.hidden = false;
+  status.textContent = message;
+  show("idle");
 }
 
 function showError(message) {
@@ -68,16 +84,15 @@ function render(state) {
   if (screen) {
     show(screen === "report" && declined ? "goodbye" : screen);
   } else {
-    show("");
-    status.textContent = "Finish your session to receive your diploma.";
+    showIdle("Finish your session to receive your diploma.");
   }
 }
 onState(render);
 
 // Also replace the loading text if this file is opened outside the extension.
 send({ type: "getState" }).then(result => {
-  if (result?.offline) status.textContent = "Open this page through the Pisonet extension.";
-}).catch(() => showError("Could not connect to your session. Reload the extension and try again."));
+  if (!result?.ok) showIdle("Open this page through the Pisonet extension.");
+}).catch(() => showIdle("Could not connect to your session. Reload the extension and try again."));
 
 document.getElementById("diploma-next").addEventListener("click", event => {
   perform(event.currentTarget, { type: "continueEnding" });
@@ -119,7 +134,7 @@ window.addEventListener("pagehide", () => clearTimeout(correctionTimer));
 async function restart(event) {
   const button = event.currentTarget;
   const result = await perform(button, { type: "restartSession" });
-  if (result) window.location.assign("purse.html");
+  if (result) window.location.assign("../index.html");
 }
 
 document.getElementById("use-again").addEventListener("click", restart);

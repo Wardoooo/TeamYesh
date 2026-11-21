@@ -12,6 +12,7 @@ const ledCode = document.getElementById("led-code");
 const ledTime = document.getElementById("led-time");
 const slot = document.getElementById("slot");
 const toast = document.querySelector(".toast");
+const trayDisplay = document.getElementById("tray-display");
 
 mountPageTools(document.getElementById("tools"));
 send({ type: "entered", page: "purse" });
@@ -23,7 +24,7 @@ onState((state) => {
   paintLed(state);
 });
 
-document.getElementById("connect").addEventListener("click", async () => {
+async function connect() {
   if (!latest || latest.inserted < 1) {
     if (toast) toast.textContent = "Insert a coin first.";
     return;
@@ -34,10 +35,21 @@ document.getElementById("connect").addEventListener("click", async () => {
     return;
   }
   window.location.href = "portal.html";
+}
+
+document.getElementById("connect").addEventListener("click", connect);
+document.getElementById("tray-connect").addEventListener("click", connect);
+document.querySelectorAll("[data-insert]").forEach((button) => {
+  button.addEventListener("click", () => insertAmount(Number(button.dataset.insert)));
 });
 
 document.querySelectorAll(".peso").forEach((coin) => {
   coin.addEventListener("pointerdown", (event) => startDrag(coin, event));
+  coin.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    if (!event.repeat) insertAmount(Number(coin.dataset.amount));
+  });
 });
 
 function paintLed(state) {
@@ -48,6 +60,7 @@ function paintLed(state) {
   ledCode.textContent = showCode ? state.accessCode : "";
   ledTime.textContent = `PHP ${inserted.toFixed(2)} = ${format(seconds)}`;
   led.classList.toggle("code-on", Boolean(showCode));
+  trayDisplay.textContent = `₱${inserted.toFixed(2)} · ${format(seconds)}${showCode ? ` · Code ${state.accessCode}` : ""}`;
 }
 
 function startDrag(coin, event) {
@@ -89,18 +102,23 @@ function startDrag(coin, event) {
     slot.classList.remove("hot");
     release(coin);
     if (!dropped) return;
-    const result = await send({ type: "insertCoin", amount: Number(coin.dataset.amount) });
-    if (!result?.ok) {
-      if (toast) toast.textContent = result?.error || "Coin jammed.";
-      return;
-    }
-    play("coin");
-    if (toast) toast.textContent = "";
-    paintLed(result.state);
+    await insertAmount(Number(coin.dataset.amount));
   }
 
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
+}
+
+async function insertAmount(amount) {
+  const result = await send({ type: "insertCoin", amount });
+  if (!result?.ok) {
+    if (toast) toast.textContent = result?.error || "Coin jammed.";
+    return;
+  }
+  play("coin");
+  if (toast) toast.textContent = "";
+  latest = result.state;
+  paintLed(result.state);
 }
 
 function release(coin) {
