@@ -192,15 +192,20 @@ function boot() {
     const thin = 8;
     let progress = 0;
     if (["captcha", "browsing"].includes(state.phase) && state.endsAt) {
-      // Grow after the paid ads period, reaching the maximum at 10s left.
-      const start = Number(state.adsUntil) || Date.now();
-      const finish = Number(state.endsAt) - 10000;
-      progress = finish <= start
-        ? 1
-        : Math.max(0, Math.min(1, (Date.now() - start) / (finish - start)));
+      // Use the whole remaining session, rather than filling up at 10s left.
+      // More purchased time spreads the same growth over a longer interval.
+      const start = Number(state.adsUntil) || Number(state.endsAt);
+      const duration = Math.max(1, Number(state.endsAt) - start);
+      progress = Math.max(0, Math.min(1, (Date.now() - start) / duration));
     }
-    const horizontal = thin + Math.max(0, window.innerWidth * 0.44 - thin) * progress;
-    const vertical = thin + Math.max(0, window.innerHeight * 0.44 - thin) * progress;
+
+    // Ease in and out so both the first and final seconds grow gently.
+    const eased = progress * progress * (3 - 2 * progress);
+    // Keep most of the webpage visible, even at maximum thickness.
+    const maxHorizontal = Math.max(thin, Math.min(96, window.innerWidth * 0.10));
+    const maxVertical = Math.max(thin, Math.min(48, window.innerHeight * 0.08));
+    const horizontal = thin + (maxHorizontal - thin) * eased;
+    const vertical = thin + (maxVertical - thin) * eased;
     frame.style.setProperty("--frame-x", `${horizontal}px`);
     frame.style.setProperty("--frame-y", `${vertical}px`);
   }
