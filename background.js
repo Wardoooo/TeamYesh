@@ -4,6 +4,7 @@
 
 import { CONFIG } from "./shared/config.js";
 import { freshState, reduce } from "./shared/phase.js";
+import { localChatUrl, requestNonsense } from "./shared/ai.js";
 
 const LIVE = ["ads", "captcha", "browsing", "finale"];
 
@@ -20,7 +21,15 @@ chrome.alarms.onAlarm.addListener(() => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  enqueue(message, sender).then(sendResponse);
+  if (message?.type === "nonsenseChat") {
+    requestNonsense(localChatUrl, message.messages)
+      .then((reply) => sendResponse({ reply }), () => sendResponse({ reply: null }));
+    return true;
+  }
+  enqueue(message, sender).then(sendResponse, (error) => {
+    console.error("Pisonet session error", error);
+    sendResponse({ ok: false, error: "Pisonet could not update the session." });
+  });
   return true;
 });
 
@@ -38,28 +47,38 @@ async function read() {
 }
 
 async function handle(message, sender) {
+  const current = await read();
+  const sessionTabId = current.sessionTabId;
+  if (/^https?:/.test(sender.url || "") && sender.tab?.id !== sessionTabId) {
+    return { ok: false, state: null };
+  }
   if (message?.type === "getState") {
-    return { ok: true, state: await read() };
+    return { ok: true, state: current };
   }
 
-  const current = await read();
   const result = reduce(current, message, Date.now());
   const changed = !result.error && JSON.stringify(current) !== JSON.stringify(result.state);
+  if (result.effect === "open-landing") {
+    const tabId = await senderTabId(sender);
+    if (!tabId) return { ok: false, error: "Open the kiosk from the extension toolbar." };
+    result.state.sessionTabId = tabId;
+    await chrome.storage.local.set({ state: result.state });
+    try {
+      await chrome.tabs.update(tabId, { url: CONFIG.landingUrl });
+    } catch {
+      await chrome.storage.local.set({ state: current });
+      return { ok: false, error: "Chrome could not open the demo site." };
+    }
+    await schedule(result.state);
+    return { ok: true, state: result.state };
+  }
   if (changed) {
     await chrome.storage.local.set({ state: result.state });
     await schedule(result.state);
   }
 
-  if (result.effect === "open-landing") {
-    try {
-      const tabId = await senderTabId(sender);
-      if (tabId) await chrome.tabs.update(tabId, { url: CONFIG.landingUrl });
-    } catch (err) {
-      console.error(err);
-    }
-  }
   if (result.effect === "show-ending") {
-    await showEnding(await senderTabId(sender));
+    await showEnding(sessionTabId || await senderTabId(sender));
   }
 
   return { ok: !result.error, error: result.error || "", state: result.error ? current : result.state };
@@ -90,12 +109,13 @@ async function senderTabId(sender) {
 async function showEnding(tabId) {
   const url = chrome.runtime.getURL("pages/finale.html");
   if (tabId) {
-    await openFinale(tabId, url);
-    return;
+    try {
+      await openFinale(tabId, url);
+      return;
+    } catch (err) {
+      console.warn("Session tab is no longer available.", err);
+    }
   }
-  const tabs = await chrome.tabs.query({});
-  const web = tabs.find((tab) => /^https?:/i.test(tab.url || ""));
-  if (web) await openFinale(web.id, url);
 }
 
 async function openFinale(tabId, url) {
