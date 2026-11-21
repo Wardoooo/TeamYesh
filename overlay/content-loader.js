@@ -1090,6 +1090,8 @@ function mount(stage, state = {}) {
   completing = false;
 
   root = node("section", "", "cap-card");
+  // The overlay shell lets clicks through unless a module opts in.
+  root.style.pointerEvents = "auto";
   root.setAttribute("role", "region");
   root.setAttribute("aria-label", "Absurd human verification");
   stage.append(root);
