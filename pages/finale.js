@@ -56,6 +56,10 @@ function render(state) {
     const detail = document.createElement("dd");
     term.textContent = label;
     detail.textContent = value;
+    if (label === "TOTAL") {
+      term.className = "receipt-total";
+      detail.className = "receipt-total";
+    }
     receipt.append(term, detail);
   }
   if (reviewBusy && state.phase === "survey") return;
@@ -93,6 +97,7 @@ form.addEventListener("submit", async event => {
   for (let i = 0; i < 5; i++) {
     const star = document.createElement("span");
     star.textContent = "★";
+    star.setAttribute("aria-hidden", "true");
     star.className = i < chosen ? "already-filled" : "being-corrected";
     star.style.setProperty("--delay", `${250 + i * 160}ms`);
     stars.append(star);
