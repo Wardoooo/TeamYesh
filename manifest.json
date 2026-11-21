@@ -10,13 +10,22 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["storage", "alarms", "tabs"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["overlay/overlay.js"],
-      "type": "module",
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "overlay/content-loader.js"
+      ],
       "run_at": "document_end",
       "all_frames": false
     }
@@ -25,11 +34,15 @@
     {
       "resources": [
         "overlay/*.css",
+        "overlay/*.js",
+        "shared/*.js",
         "assets/sounds/*",
         "assets/img/*",
         "assets/video/*"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
