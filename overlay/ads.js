@@ -166,7 +166,7 @@ function showAd(adOverride = null) {
     note.textContent = "Premium unlocked. Nothing closed.";
   });
 
-  if (!ad.fullscreen) rotate = setTimeout(showAd, CONFIG.adHoldMs);
+  if (ad.kind !== "video") rotate = setTimeout(showAd, CONFIG.adHoldMs);
 }
 
 function scheduleScamVideo() {
