@@ -3,35 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Piso WiFi — Certificate</title>
-  <link rel="stylesheet" href="kiosk.css">
-  <link rel="stylesheet" href="../overlay/popups.css">
+  <title>Pisonet From Hell - Congratulations</title>
+  <link rel="stylesheet" href="finale.css">
 </head>
-<body class="tarp-body">
-  <main class="tarp">
-    <div class="tools" id="tools"></div>
-    <section data-screen="finale">
-      <h1>CONGRATULATIONS</h1>
-      <p>You are now officially qualified to use the internet.</p>
-      <p class="note">Printing your certificate. This will take longer than your remaining time.</p>
+<body>
+  <main class="ending">
+    <p class="brand">PISONET FROM HELL</p>
+    <p id="status" role="status" aria-live="polite">Loading your graduation...</p>
+
+    <section data-screen="diploma" aria-labelledby="diploma-title" hidden>
+      <p class="eyebrow">TIME'S UP. YOU SURVIVED.</p>
+      <h1 id="diploma-title" tabindex="-1">Congratulations!</h1>
+      <p>Your internet session has ended. Your patience deserves a diploma.</p>
+      <div class="diploma" aria-label="Diploma of Internet Survival">
+        <p class="eyebrow">CERTIFICATE OF COMPLETION</p>
+        <h2>Diploma of Internet Survival</h2>
+        <p>This certifies that</p>
+        <p class="graduate">YOU</p>
+        <p>surpassed every ragebaiting task on your quest to access the internet.</p>
+        <p>You endured the advertisements, the obstacles, and the shrinking browser.</p>
+        <p class="qualification">Officially qualified to use the internet.<br>Unfortunately, your time is already over.</p>
+        <div class="signature">Pisonet Department of Unnecessary Obstacles</div>
+      </div>
+      <button id="diploma-next" type="button">Continue to your review</button>
     </section>
-    <section data-screen="expired" hidden>
-      <h1>SESSION EXPIRED</h1>
-      <p>PLEASE INSERT ANOTHER COIN.</p>
-      <button type="button" id="expired-next">INSERT ANOTHER COIN</button>
+
+    <section data-screen="survey" aria-labelledby="review-title" hidden>
+      <p class="eyebrow">ONE LAST TASK</p>
+      <h1 id="review-title" tabindex="-1">How was your experience?</h1>
+      <p>Your opinion is very important to us. Allegedly.</p>
+      <form id="review-form">
+        <fieldset>
+          <legend>Choose a rating</legend>
+          <div class="ratings">
+            <label><input type="radio" name="rating" value="1" required><span>1 ★</span></label>
+            <label><input type="radio" name="rating" value="2"><span>2 ★</span></label>
+            <label><input type="radio" name="rating" value="3"><span>3 ★</span></label>
+            <label><input type="radio" name="rating" value="4"><span>4 ★</span></label>
+            <label><input type="radio" name="rating" value="5"><span>5 ★</span></label>
+          </div>
+        </fieldset>
+        <label class="feedback-label" for="feedback">Tell us what you think (optional)</label>
+        <textarea id="feedback" name="feedback" rows="4" maxlength="1000" placeholder="I survived, but at what cost?"></textarea>
+        <button id="submit-review" type="submit">Submit review</button>
+      </form>
     </section>
-    <section data-screen="survey" hidden>
-      <h1>RATE YOUR WIFI</h1>
-      <p class="note">M5: any rating becomes 5 stars. The buttons already do that.</p>
-      <div id="stars"></div>
+
+    <section data-screen="report" aria-labelledby="thanks-title" hidden>
+      <h1 id="thanks-title" tabindex="-1">Thanks for the five stars!</h1>
+      <div class="review-result">
+        <div class="five-stars" aria-label="5 out of 5 stars">★★★★★</div>
+        <p>Your review has been recorded as <strong>5 out of 5</strong>.</p>
+        <p>Our system has helpfully corrected your opinion.</p>
+      </div>
+      <h2>Still want to use the internet?</h2>
+      <p>Another session starts with another coin. Naturally.</p>
+      <div class="actions">
+        <button id="use-again" type="button">Yes - insert another coin</button>
+        <button id="leave" class="secondary" type="button">No, I've suffered enough</button>
+      </div>
     </section>
-    <section data-screen="report" hidden>
-      <h1>CERTIFIED SUFFERING GRADUATE</h1>
-      <pre id="stats"></pre>
-      <div id="concierge"></div>
+
+    <section data-screen="goodbye" aria-labelledby="goodbye-title" hidden>
+      <h1 id="goodbye-title" tabindex="-1">You are free. For now.</h1>
+      <p>Thanks for surviving Pisonet From Hell. You can close this tab.</p>
+      <button id="changed-mind" type="button">Actually, insert another coin</button>
     </section>
-    <p class="message" id="other">The ending has not started.</p>
-    <p class="toast"></p>
+    <p id="error" role="alert" hidden></p>
   </main>
   <script type="module" src="finale.js"></script>
 </body>

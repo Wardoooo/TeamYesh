@@ -44,6 +44,10 @@ async function handle(message, sender) {
 
   const current = await read();
   const result = reduce(current, message, Date.now());
+  // Remember the session tab so an alarm does not redirect an unrelated tab.
+  if (result.effect === "open-landing") {
+    result.state.sessionTabId = await senderTabId(sender);
+  }
   const changed = !result.error && JSON.stringify(current) !== JSON.stringify(result.state);
   if (changed) {
     await chrome.storage.local.set({ state: result.state });
@@ -52,14 +56,14 @@ async function handle(message, sender) {
 
   if (result.effect === "open-landing") {
     try {
-      const tabId = await senderTabId(sender);
+      const tabId = result.state.sessionTabId || await senderTabId(sender);
       if (tabId) await chrome.tabs.update(tabId, { url: CONFIG.landingUrl });
     } catch (err) {
       console.error(err);
     }
   }
   if (result.effect === "show-ending") {
-    await showEnding(await senderTabId(sender));
+    await showEnding(result.state.sessionTabId || await senderTabId(sender));
   }
 
   return { ok: !result.error, error: result.error || "", state: result.error ? current : result.state };
@@ -90,8 +94,12 @@ async function senderTabId(sender) {
 async function showEnding(tabId) {
   const url = chrome.runtime.getURL("pages/finale.html");
   if (tabId) {
-    await openFinale(tabId, url);
-    return;
+    try {
+      await openFinale(tabId, url);
+      return;
+    } catch (err) {
+      console.warn("Session tab is no longer available.", err);
+    }
   }
   const tabs = await chrome.tabs.query({});
   const web = tabs.find((tab) => /^https?:/i.test(tab.url || ""));

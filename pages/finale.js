@@ -1,51 +1,86 @@
-// Owner: M5
-// Finale, expired, forced 5-star survey, and the graduation report.
-// The clock is what ends the finale. Do not pause it.
-
 import { send, onState } from "../shared/api.js";
-import { mountPageTools } from "./god.js";
-import { mount, unmount } from "../overlay/popups.js";
 
-mountPageTools(document.getElementById("tools"));
+const status = document.getElementById("status");
+const error = document.getElementById("error");
+const form = document.getElementById("review-form");
+let latest = null;
+let currentScreen = "";
+let declined = false;
 
-const stars = document.getElementById("stars");
-for (let value = 1; value <= 5; value += 1) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = `${value} star`;
-  button.addEventListener("click", () => send({ type: "rate", stars: value }));
-  stars.append(button);
+function show(screen) {
+  document.querySelectorAll("[data-screen]").forEach(section => {
+    section.hidden = section.dataset.screen !== screen;
+  });
+  if (screen !== currentScreen) {
+    currentScreen = screen;
+    document.querySelector(`[data-screen="${screen}"] h1`)?.focus();
+  }
 }
 
-document.getElementById("expired-next").addEventListener("click", () => {
-  send({ type: "continueEnding" });
+function showError(message) {
+  error.textContent = message;
+  error.hidden = false;
+}
+
+async function perform(button, message) {
+  button.disabled = true;
+  error.hidden = true;
+  try {
+    const result = await send(message);
+    if (!result?.ok) {
+      throw new Error(result?.error || "Open Pisonet from the extension icon and try again.");
+    }
+    return result;
+  } catch (err) {
+    showError(err.message || "Something went wrong. Please try again.");
+    return null;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+onState(state => {
+  if (!state) return;
+  latest = state;
+  const screen = { expired: "diploma", finale: "diploma", survey: "survey", report: "report" }[state.phase];
+  status.hidden = Boolean(screen);
+  if (screen) {
+    show(screen === "report" && declined ? "goodbye" : screen);
+  } else {
+    show("");
+    status.textContent = "Finish your session to receive your diploma.";
+  }
 });
 
-const screens = ["finale", "expired", "survey", "report"];
-let conciergeOn = false;
+// Also replace the loading text if this file is opened outside the extension.
+send({ type: "getState" }).then(result => {
+  if (result?.offline) status.textContent = "Open this page through the Pisonet extension.";
+}).catch(() => showError("Could not connect to your session. Reload the extension and try again."));
 
-onState((state) => {
-  const ending = screens.includes(state.phase);
-  document.getElementById("other").hidden = ending;
-  document.querySelectorAll("[data-screen]").forEach((section) => {
-    section.hidden = section.dataset.screen !== state.phase;
+document.getElementById("diploma-next").addEventListener("click", event => {
+  perform(event.currentTarget, { type: "continueEnding" });
+});
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
+  if (latest?.phase !== "survey" || !form.reportValidity()) return;
+  const chosen = new FormData(form).get("rating");
+  perform(document.getElementById("submit-review"), {
+    type: "rate",
+    stars: Number(chosen),
+    review: document.getElementById("feedback").value
   });
-  document.getElementById("stats").textContent = JSON.stringify({
-    rating: state.rating,
-    credit: state.credit,
-    inserted: state.inserted,
-    brightness: state.brightness,
-    stats: state.stats
-  }, null, 2);
-
-  if (state.phase === "report" && !conciergeOn) {
-    mount(document.getElementById("concierge"), state);
-    conciergeOn = true;
-  }
-  if (state.phase !== "report" && conciergeOn) {
-    unmount();
-    conciergeOn = false;
-  }
 });
 
-setInterval(() => send({ type: "tickCheck" }), 500);
+async function restart(event) {
+  const button = event.currentTarget;
+  const result = await perform(button, { type: "restartSession" });
+  if (result) window.location.assign("purse.html");
+}
+
+document.getElementById("use-again").addEventListener("click", restart);
+document.getElementById("changed-mind").addEventListener("click", restart);
+document.getElementById("leave").addEventListener("click", () => {
+  declined = true;
+  show("goodbye");
+});

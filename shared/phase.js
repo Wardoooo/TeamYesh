@@ -45,6 +45,8 @@ export function freshState() {
     brightness: 1,
     clearToken: 0,
     rating: 0,
+    review: "",
+    sessionTabId: 0,
     stats: emptyStats()
   };
 }
@@ -129,7 +131,7 @@ export function reduce(state, message, now) {
 
   if (type === "captchaDone" && next.phase === "captcha") next.phase = "browsing";
 
-  if (type === "pageLoaded" && next.phase === "browsing") next.phase = "finale";
+  // Loading a webpage does not end the paid session. Expiry opens the diploma.
 
   if (type === "addCredit") {
     const amount = Math.floor(Number(message.amount));
@@ -150,16 +152,30 @@ export function reduce(state, message, now) {
   }
 
   if (type === "continueEnding") {
-    if (next.phase === "expired") next.phase = "survey";
+    if (["expired", "finale"].includes(next.phase)) next.phase = "survey";
     else if (next.phase === "survey") next.phase = "report";
   }
 
   if (type === "rate") {
-    const stars = Number(message.stars);
-    next.stats.attemptedStars = Number.isFinite(stars) ? stars : 5;
-    next.stats.forcedStars = 5;
-    next.rating = 5;
-    if (next.phase === "survey") next.phase = "report";
+    if (next.phase !== "survey") {
+      error = "Open the review screen first.";
+    } else {
+      const stars = Number(message.stars);
+      next.stats.attemptedStars = Number.isFinite(stars)
+        ? Math.max(1, Math.min(5, Math.round(stars))) : 5;
+      next.stats.forcedStars = 5;
+      next.rating = 5;
+      next.review = String(message.review || "").slice(0, 1000);
+      next.phase = "report";
+    }
+  }
+
+  if (type === "restartSession") {
+    if (next.phase !== "report") {
+      error = "Finish your review before starting again.";
+    } else {
+      Object.assign(next, freshState(), { phase: "purse", accessCode: makeCode() });
+    }
   }
 
   if (type === "god") applyGod(next, message, now);

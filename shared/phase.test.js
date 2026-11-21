@@ -40,8 +40,8 @@ state = reduce(state, { type: "captchaDone" }, now + 61_000).state;
 assert.equal(state.phase, "browsing");
 
 const loaded = reduce(state, { type: "pageLoaded", url: "https://www.google.com" }, now + 70_000);
-assert.equal(loaded.state.phase, "finale");
-assert.equal(loaded.effect, "show-ending");
+assert.equal(loaded.state.phase, "browsing");
+assert.equal(loaded.effect, null);
 state = loaded.state;
 
 const expired = reduce(state, { type: "tickCheck" }, now + 120_000);
@@ -92,4 +92,33 @@ assert.equal(broke.state.credit, 2);
 rich = reduce(rich, { type: "addCredit", amount: -1 }, now).state;
 assert.equal(rich.credit, 1);
 
-console.log("phase rules ok");
+// Every review choice is recorded as five stars, including free-text feedback.
+for (let stars = 1; stars <= 5; stars += 1) {
+  const reviewed = reduce({ ...freshState(), phase: "survey" },
+    { type: "rate", stars, review: "The ads were outrageous." }, now).state;
+  assert.equal(reviewed.phase, "report");
+  assert.equal(reviewed.rating, 5);
+  assert.equal(reviewed.stats.attemptedStars, stars);
+  assert.equal(reviewed.stats.forcedStars, 5);
+  assert.equal(reviewed.review, "The ads were outrageous.");
+  const restarted = reduce(reviewed, { type: "restartSession" }, now);
+  assert.equal(restarted.error, "");
+  assert.equal(restarted.state.phase, "purse");
+  assert.equal(restarted.state.inserted, 0);
+  assert.equal(restarted.state.endsAt, 0);
+  assert.equal(restarted.state.adsUntil, 0);
+  assert.equal(restarted.state.rating, 0);
+  assert.equal(restarted.state.review, "");
+  assert.equal(restarted.state.accessCode.length, 6);
+  const coin = reduce(restarted.state, { type: "insertCoin", amount: 1 }, now).state;
+  const portal = reduce(coin, { type: "entered", page: "portal" }, now).state;
+  const second = reduce(portal, { type: "startSession", code: portal.accessCode }, now);
+  assert.equal(second.state.phase, "ads");
+  assert.equal(second.state.endsAt, now + 60000);
+}
+assert.ok(reduce(freshState(), { type: "restartSession" }, now).error);
+assert.ok(reduce(freshState(), { type: "rate", stars: 1 }, now).error);
+const long = reduce({ ...freshState(), phase: "survey" },
+  { type: "rate", stars: 1, review: "x".repeat(1100) }, now).state;
+assert.equal(long.review.length, 1000);
+console.log("phase rules and ending/restart flow ok");
