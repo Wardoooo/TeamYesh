@@ -3,7 +3,7 @@
 // Overlay has its own copy for real web pages. Extension pages use this one.
 
 import { mountSoundControl } from "../shared/sfx.js";
-import { CONFIG } from "../shared/config.js";
+import { secondsForPesos } from "../shared/config.js";
 import { send, onState, canUseExtension } from "../shared/api.js";
 
 export function mountPageTools(parent) {
@@ -65,7 +65,7 @@ export function mountPageTools(parent) {
       time.textContent = format(Math.ceil(left / 1000));
       return;
     }
-    time.textContent = format(latest.inserted * CONFIG.secondsPerCoin);
+    time.textContent = format(secondsForPesos(latest.inserted));
   }
 }
 

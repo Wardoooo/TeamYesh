@@ -192,6 +192,8 @@ modules["shared/config.js"] = (() => {
 // into your own file, or the phases will drift apart.
 
 const CONFIG = {
+  // One peso is 60 seconds. Five pesos is 3 minutes. Ten pesos is 5 minutes.
+  // The total decides the rate. Reaching 5 or 10 replaces the stacked minutes.
   secondsPerCoin: 60,
   startingCoins: 5,
   codeLength: 6,
@@ -214,6 +216,19 @@ const CONFIG = {
   aiProxyUrl: "",
   sounds: ["coin", "jingle", "buzz", "boot", "ding"]
 };
+
+// Time follows the total inserted, not each coin added on its own.
+// 1–4 pesos: 60 seconds each.
+// 5–9 pesos: 3 minutes. Five ₱1 coins drop back to 3 minutes, not 5.
+// Each full 10 pesos is 5 minutes, then the leftover uses the same rule.
+// ₱5 + five ₱1 is ₱10, so 5 minutes. ₱11 is 5 minutes + 60 seconds.
+function secondsForPesos(total) {
+  const pesos = Math.max(0, Math.floor(Number(total) || 0));
+  const bundles = Math.floor(pesos / 10);
+  const rest = pesos % 10;
+  const restSeconds = rest >= 5 ? 3 * 60 : rest * CONFIG.secondsPerCoin;
+  return bundles * 5 * 60 + restSeconds;
+}
 
 const PHASES = [
   "store",
@@ -245,7 +260,7 @@ const STAT_KEYS = [
 // Messages (send these to background.js; do not call another module):
 // getState
 // entered            { page: "store" | "purse" | "portal" }
-// insertCoin         { amount: 1 | 5 | 10 }  each peso adds secondsPerCoin
+// insertCoin         { amount: 1 | 5 | 10 }  time comes from secondsForPesos(total)
 // startSession       { code }
 // captchaDone
 // pageLoaded         { url }
@@ -260,7 +275,7 @@ const STAT_KEYS = [
 // Sound is not a message. Call play() from shared/sfx.js on the page that
 // received the click. Files live in assets/sounds/<name>.mp3.
 
-return { CONFIG, PHASES, ENDING_PHASES, STAT_KEYS };
+return { CONFIG, secondsForPesos, PHASES, ENDING_PHASES, STAT_KEYS };
 })();
 modules["overlay/ads.js"] = (() => {
 const { ADS } = modules["overlay/ads-data.js"];
@@ -967,83 +982,90 @@ function showChallenge() {
 return { mount, unmount };
 })();
 modules["overlay/brightness.js"] = (() => {
-  // Owner: M3
-  let cleanup = null;
+// Owner: M3
+let cleanup = null;
 
-  function mount(stage, state) {
-    unmount();
+function mount(stage, state) {
+  unmount();
 
-    const shade = document.createElement("div");
-    shade.setAttribute("aria-hidden", "true");
-    Object.assign(shade.style, {
-      position: "absolute",
-      inset: "0",
-      zIndex: "1000",
-      backgroundColor: "black",
-      pointerEvents: "none"
-    });
+  const shade = document.createElement("div");
+  shade.setAttribute("aria-hidden", "true");
+  Object.assign(shade.style, {
+    position: "absolute",
+    inset: "0",
+    zIndex: "1000",
+    backgroundColor: "black",
+    pointerEvents: "none"
+  });
 
-    const wheel = document.createElement("button");
-    wheel.type = "button";
-    wheel.title = "Scroll up to increase brightness";
-    Object.assign(wheel.style, {
-      position: "absolute",
-      left: "50%",
-      bottom: "44px",
-      transform: "translateX(-50%)",
-      zIndex: "1001",
-      pointerEvents: "auto",
-      padding: "10px 18px",
-      border: "3px solid #e2b34a",
-      borderRadius: "24px",
-      background: "#19140e",
-      color: "#fff",
-      font: "bold 14px system-ui, sans-serif",
-      cursor: "ns-resize"
-    });
+  const wheel = document.createElement("button");
+  wheel.type = "button";
+  wheel.title = "Scroll up to increase brightness";
+  Object.assign(wheel.style, {
+    position: "absolute",
+    left: "50%",
+    bottom: "44px",
+    transform: "translateX(-50%)",
+    zIndex: "1001",
+    pointerEvents: "auto",
+    padding: "10px 18px",
+    border: "3px solid #e2b34a",
+    borderRadius: "24px",
+    background: "#19140e",
+    color: "#fff",
+    font: "bold 14px system-ui, sans-serif",
+    cursor: "ns-resize"
+  });
 
-    function paint(value) {
-      const brightness = value ?? 1;
-      shade.style.opacity = String(1 - brightness / 100);
-      wheel.textContent = `↑ Scroll up · Brightness ${brightness}%`;
-    }
-
-    function increase() {
-      chrome.runtime.sendMessage({ type: "increaseBrightness" });
-    }
-
-    wheel.addEventListener("wheel", (event) => {
-      if (event.ctrlKey || event.deltaY === 0) return;
-      event.preventDefault();
-      if (event.deltaY < 0) increase();
-    }, { passive: false });
-
-    wheel.addEventListener("click", increase);
-
-    function onStorageChange(changes, area) {
-      const updated = changes.state?.newValue;
-      if (area === "local" && updated) {
-        paint(updated.brightness);
-      }
-    }
-
-    paint(state.brightness);
-    stage.append(shade, wheel);
-    chrome.storage.onChanged.addListener(onStorageChange);
-
-    cleanup = () => {
-      chrome.storage.onChanged.removeListener(onStorageChange);
-      shade.remove();
-      wheel.remove();
-    };
+  function paint(value) {
+    const brightness = value ?? 1;
+    shade.style.opacity = String(1 - brightness / 100);
+    wheel.textContent = `Scroll up or press ↑ · Brightness ${brightness}%`;
   }
 
-  function unmount() {
-    cleanup?.();
-    cleanup = null;
+  function increase() {
+    chrome.runtime.sendMessage({ type: "increaseBrightness" });
   }
 
-  return { mount, unmount };
+  wheel.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp") return;
+  event.preventDefault();
+  increase();
+});
+
+  wheel.addEventListener("wheel", (event) => {
+    if (event.ctrlKey || event.deltaY === 0) return;
+    event.preventDefault();
+
+    if (event.deltaY < 0) increase();
+  }, { passive: false });
+
+  // Clicking, Enter, and Space also work.
+  wheel.addEventListener("click", increase);
+
+  function onStorageChange(changes, area) {
+    const updated = changes.state?.newValue;
+    if (area === "local" && updated) {
+      paint(updated.brightness);
+    }
+  }
+
+  paint(state.brightness);
+  stage.append(shade, wheel);
+  chrome.storage.onChanged.addListener(onStorageChange);
+
+  cleanup = () => {
+    chrome.storage.onChanged.removeListener(onStorageChange);
+    shade.remove();
+    wheel.remove();
+  };
+}
+
+function unmount() {
+  cleanup?.();
+  cleanup = null;
+}
+return { mount, unmount };
 })();
 modules["overlay/loading.js"] = (() => {
 // Owner: M4
@@ -1271,6 +1293,7 @@ const GROUPS = {
     [mountChat, unmountChat]
   ]
 };
+
 if (!window.__pisonetShell) {
   window.__pisonetShell = true;
   boot();
