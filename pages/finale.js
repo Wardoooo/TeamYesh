@@ -4,6 +4,7 @@ import { play, mountSoundControl } from "../shared/sfx.js";
 
 mountSoundControl(document.getElementById("sound-controls"));
 
+const shopTheme = document.getElementById("shop-theme");
 const status = document.getElementById("status");
 const error = document.getElementById("error");
 const form = document.getElementById("review-form");
@@ -21,6 +22,7 @@ function show(screen) {
   });
   if (screen !== currentScreen) {
     currentScreen = screen;
+    shopTheme.disabled = screen === "diploma";
     if (screen === "goodbye" && !reducedMotion.matches) {
       goodbyeVideo.play().then(() => {
         if (currentScreen === "goodbye") goodbyeVideo.hidden = false;

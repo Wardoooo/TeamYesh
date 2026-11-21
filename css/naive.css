@@ -36,18 +36,27 @@ a { color: inherit; }
 /* ---------- page 1: store photo ---------- */
 
 .store-page {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  background: #0e0e0e;
+  height: 100dvh;
+  background: #72543c;
 }
 
-.stage {
+.store-page .stage {
   position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
+  height: 100%;
+  overflow: clip;
 }
 
-.stage img {
+/* Scale the artwork and its percentage-based machine link as one surface. */
+.store-art {
+  position: absolute;
+  width: max(100%, calc(100dvh * 16 / 9));
+  left: 72%;
+  transform: translateX(-72%);
+  /* Keep the store sign at the top until the machine needs room on wide screens. */
+  top: min(0px, calc(92% - 41.1vw));
+}
+
+.store-page .stage img {
   display: block;
   width: 100%;
   height: auto;
@@ -83,6 +92,15 @@ a { color: inherit; }
   padding: 6px 12px;
   border-radius: 999px;
   pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .store-page .hint {
+    bottom: 70px;
+    width: max-content;
+    max-width: calc(100% - 24px);
+    text-align: center;
+  }
 }
 
 /* ---------- page 2: machine ---------- */

@@ -1,0 +1,32 @@
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../assets/fonts/BarlowCondensed-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  src: url("../assets/fonts/PT_Serif-Web-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+#terms, .ending-page {
+  --printed-heading: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --printed-text: "PT Serif", Cambria, Georgia, serif;
+  --shop-body: var(--printed-text);
+  font-family: var(--printed-text);
+}
+
+#terms :is(h1, h2), .ending-page .ending :is(h1, h2, .brand, .eyebrow, .graduate, figcaption) {
+  font-family: var(--printed-heading);
+  font-weight: 700;
+  letter-spacing: .015em;
+}
+
+#terms :is(.yes, #giveup), .ending-page .ending :is(button, textarea, summary) {
+  font-family: var(--printed-text);
+}
+
+#terms h2 { font-size: clamp(24px, 3vw, 30px); }

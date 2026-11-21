@@ -135,7 +135,7 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 .purse-page .shop-header, .purse-page .shop-footer { position: absolute; inset-inline: 0; }
 .purse-page .shop-header { top: 0; }
 .purse-page .shop-footer { bottom: 0; }
-.purse-page > .tools { top: 82px; }
+.purse-page > .tools { top: 12px; }
 .purse-page .connect { background: var(--shop-leaf); box-shadow: 0 3px 0 var(--shop-leaf-dark); }
 .purse-page .peso:focus-visible, .purse-page .slot.hot { outline: 3px solid #ffe098; outline-offset: 2px; }
 .purse-page .toast { z-index: 7; bottom: 54px; margin: 0; }
@@ -143,7 +143,7 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 .machine-tray { display: none; }
 
 /* Paper and wood surfaces leave the portal, support and review backgrounds in place. */
-:is(.portal-page, .ending-page:has([data-screen="diploma"]:not([hidden]))) {
+.portal-page {
   min-height: 100vh;
   background-color: #c4a36a;
   background-image:
@@ -206,7 +206,7 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 /* Review art and its existing scrim are intentional, including the goodbye screen. */
 .ending-page:has([data-screen]:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]):not([hidden])) .ending {
   margin: 0;
-  min-height: calc(100vh - 70px);
+  min-height: 100vh;
   border: 0;
   box-shadow: none;
   background: transparent;
@@ -236,9 +236,9 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 @media (max-width: 700px) {
   .shop-header { gap: 0 12px; }
   .shop-header nav a { padding-inline: 10px; }
-  .purse-page { box-sizing: border-box; display: block; padding-top: clamp(164px, 19vh, 210px); }
+  .purse-page { box-sizing: border-box; display: block; padding-top: 84px; }
   .purse-page .stage { margin-inline: auto; }
-  .purse-page > .tools { position: absolute; top: 116px; left: var(--shop-gutter); }
+  .purse-page > .tools { position: absolute; top: 12px; left: var(--shop-gutter); }
   .purse-page .shop-footer { position: static; }
   .purse-page .toast { bottom: 66px; }
   .machine-tray { display: block; margin: 16px auto 22px; width: min(430px, calc(100% - 28px)); box-sizing: border-box; padding: 16px; border: 1px solid var(--shop-line); border-radius: 12px; background: var(--shop-cream); }
@@ -259,3 +259,21 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
     transition: background-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
   }
 }
+
+/* Artwork behind the review and other shop-themed ending screens. */
+.ending-page {
+  min-height: 100vh;
+  background: linear-gradient(#101b2a45, #101b2a45),
+    #13233b url("../assets/img/mobilelgends.jpg") right center / cover fixed no-repeat;
+}
+.ending-page .ending {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 72px clamp(16px, 4vw, 48px) 32px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.ending-page:has(section[data-screen]:not([hidden])) .ending { padding-top: 72px; }
