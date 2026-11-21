@@ -176,7 +176,10 @@ function mountSoundControl(parent) {
 return { play, setMuted, mountSoundControl };
 })();
 modules["overlay/ads-data.js"] = (() => {
+// Image and video cards share the normal ad rotation.
 const ADS = [
+  { kind: "video", src: "assets/videos/102494-660268439_medium.mp4" },
+  { kind: "video", src: "assets/videos/108781-681686600.mp4" },
   { kind: "image", src: "assets/img/photo-1562577308-9e66f0c65ce5.avif" },
   { kind: "image", src: "assets/img/photo-1608222351212-18fe0ec7b13b.avif" },
   { kind: "image", src: "assets/img/photo-1786923228848-6575ea78e8da.avif" },
@@ -190,7 +193,17 @@ const SCAM_VIDEO = {
   fullscreen: true
 };
 
-return { ADS, SCAM_VIDEO };
+// Bonus cards for X clicks. All content stays inside the extension.
+const MEME_ADS = [
+  { kind: "meme", title: "YOU CLOSED ABSOLUTELY NOTHING", message: "Your click unlocked another ad. Excellent work.", color: "#ffe14a" },
+  { kind: "meme", title: "TASK FAILED SUCCESSFULLY", message: "Close request sent to the ad department.", color: "#a5f3cf" },
+  { kind: "meme", title: "THE X IS AN AD SUBSCRIPTION BUTTON", message: "Congratulations on subscribing again.", color: "#ffc7ec" },
+  { kind: "image", src: "assets/img/1795230294972.png", fit: "contain" },
+  { kind: "meme", title: "ONE DOES NOT SIMPLY CLOSE THE AD", message: "Have you tried clicking harder? It definitely helps our ad count.", color: "#b9dcff" },
+  { kind: "meme", title: "THANK YOU FOR YOUR CLICK", message: "It has been exchanged for one more advertisement. No refunds.", color: "#ffd7ac" }
+];
+
+return { ADS, SCAM_VIDEO, MEME_ADS };
 })();
 modules["shared/config.js"] = (() => {
 // Owner: M1
@@ -284,7 +297,7 @@ const STAT_KEYS = [
 return { CONFIG, secondsForPesos, PHASES, ENDING_PHASES, STAT_KEYS };
 })();
 modules["overlay/ads.js"] = (() => {
-const { ADS, SCAM_VIDEO } = modules["overlay/ads-data.js"];
+const { ADS, SCAM_VIDEO, MEME_ADS } = modules["overlay/ads-data.js"];
 const { CONFIG } = modules["shared/config.js"];
 const { play } = modules["shared/sfx.js"];
 
@@ -309,12 +322,16 @@ let fledAt = 0;
 let videoTimer = 0;
 let videoDismissals = 0;
 let adsDeadline = 0;
+let lastMeme = -1;
+let lastMissedClick = 0;
 
 function mount(stage, state) {
   unmount();
 
   mode = state.phase === "browsing" ? "browsing" : "ads";
   skips = 0;
+  lastMeme = -1;
+  lastMissedClick = 0;
   videoDismissals = 0;
   adsDeadline = Number(state.adsUntil) || Date.now() + 60_000;
 
@@ -329,7 +346,10 @@ function mount(stage, state) {
   window.addEventListener("resize", repositionCards);
 
   if (mode === "ads") {
-    for (let count = 0; count < 3; count += 1) showAd();
+    const videos = ADS.filter(ad => ad.kind === "video");
+    // The newest initial card is a video, so it is visible and playing.
+    const firstVideo = videos[Math.floor(Math.random() * videos.length)];
+    for (let count = 0; count < 3; count += 1) showAd(count === 2 ? firstVideo : null);
     scheduleScamVideo();
     return;
   }
@@ -369,6 +389,7 @@ function showAd(adOverride = null) {
   const ad = adOverride || pickAd();
   const card = document.createElement("article");
   card.className = "ads-card";
+  if (ad.bonus) card.dataset.bonus = "true";
   if (ad.fullscreen) card.dataset.fullscreen = "true";
 
   paintShell(card);
@@ -424,28 +445,7 @@ function showAd(adOverride = null) {
     }, { once: true });
   }
 
-  card.addEventListener("pointermove", event => {
-    if (covering(exit, event) || !near(exit, event)) return;
-
-    flee(exit, card, event);
-    note.textContent =
-      TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
-  });
-
-  exit.addEventListener("click", () => {
-    sendStat("closes");
-    clearTimeout(rotate);
-
-    root.querySelectorAll("video").forEach(video => {
-      video.pause();
-    });
-
-    root.replaceChildren();
-
-    chrome.runtime.sendMessage({
-      type: "expireNow"
-    });
-  });
+  installRageClose(card, [exit], note, exit);
 
   skip.addEventListener("click", () => {
     if (skips >= CONFIG.skipCap) {
@@ -493,10 +493,12 @@ function showBrowsingCard() {
   placeAd(card);
 
   const decoy = button("×", "ads-x");
+  decoy.setAttribute("aria-label", "Close advertisement");
   decoy.style.top = "6px";
   decoy.style.left = "6px";
 
   const exit = button("×", "ads-x");
+  exit.setAttribute("aria-label", "Close advertisement");
   exit.style.top = "6px";
   exit.style.right = "6px";
 
@@ -530,11 +532,12 @@ function showBrowsingCard() {
     card.remove();
   }
 
-  decoy.addEventListener("click", showBrowsingCard);
-
-  exit.addEventListener("click", () => {
-    sendStat("closes");
-    removeCard();
+  // The second half is browsing time: either X simply closes this card.
+  [decoy, exit].forEach(control => {
+    control.addEventListener("click", () => {
+      sendStat("closes");
+      removeCard();
+    });
   });
 
   skip.addEventListener("click", () => {
@@ -567,6 +570,48 @@ function showBrowsingCard() {
   appendCard(card);
   sendStat("adsSeen");
   startSound(ad, media);
+}
+
+function showBonusAd(note) {
+  if (!root || mode !== "ads" || !MEME_ADS.length || Date.now() >= adsDeadline) return;
+  lastMeme = (lastMeme + 1) % MEME_ADS.length;
+  const bonus = { ...MEME_ADS[lastMeme], bonus: true };
+  note.textContent = "Close request denied. Bonus ad unlocked.";
+  play("buzz");
+  sendStat("closes");
+  showAd(bonus);
+}
+
+function installRageClose(card, exits, note, fleeingExit = null) {
+  let dodge = null;
+  exits.forEach(exit => {
+    exit.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      dodge = null;
+      showBonusAd(note);
+    });
+  });
+  if (!fleeingExit) return;
+
+  card.addEventListener("pointermove", event => {
+    if (covering(fleeingExit, event) || !near(fleeingExit, event)) return;
+    const box = fleeingExit.getBoundingClientRect();
+    dodge = { x: box.left + box.width / 2, y: box.top + box.height / 2, at: Date.now() };
+    flee(fleeingExit, card, event);
+    note.textContent = TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
+  });
+
+  // A click at the place where the fleeing X just was is an attempt too.
+  card.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || event.target.closest("button, video, input")) return;
+    const now = Date.now();
+    if (!dodge || now - dodge.at > 1500 || now - lastMissedClick < 350) return;
+    if (Math.hypot(event.clientX - dodge.x, event.clientY - dodge.y) > NEAR) return;
+    dodge = null;
+    lastMissedClick = now;
+    showBonusAd(note);
+  });
 }
 
 function pickAd() {
@@ -653,6 +698,24 @@ function placeholder() {
 }
 
 function buildMedia(ad) {
+  if (ad.kind === "meme") {
+    const panel = document.createElement("div");
+    panel.className = "ads-media ads-meme";
+    paintMedia(panel);
+    Object.assign(panel.style, {
+      display: "flex", flexDirection: "column", justifyContent: "center",
+      padding: "18px 18px 100px", boxSizing: "border-box",
+      background: ad.color || "#ffe14a", color: "#111", textAlign: "center"
+    });
+    const heading = document.createElement("strong");
+    heading.textContent = ad.title;
+    Object.assign(heading.style, { font: "900 clamp(14px, 2.1vw, 23px)/1.1 Arial, sans-serif", overflowWrap: "anywhere" });
+    const message = document.createElement("p");
+    message.textContent = ad.message;
+    Object.assign(message.style, { font: "700 clamp(11px, 1.3vw, 15px)/1.25 Arial, sans-serif", margin: "12px 0 0" });
+    panel.append(heading, message);
+    return panel;
+  }
   const path = ad.src || ad.image;
 
   // Empty path means a black placeholder.
@@ -664,6 +727,7 @@ function buildMedia(ad) {
 
   media.className = "ads-media";
   paintMedia(media);
+  if (ad.fit) media.style.objectFit = ad.fit;
 
   // Missing or broken media becomes a black placeholder.
   media.addEventListener(
