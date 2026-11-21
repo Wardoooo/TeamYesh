@@ -3,7 +3,7 @@
 // CONFIG.disconnectCap (2). Stat key: "disconnects".
 // When the real load has survived your cap, send:
 // { type: "pageLoaded", url: location.href }
-// That opens the finale page. Delete the temporary button when the bar is real.
+// Browsing now continues until the session timer expires.
 
 let root = null;
 
@@ -13,6 +13,8 @@ export function mount(stage) {
   root.className = "shell-temp";
   root.textContent = "TEMPORARY page loaded";
   root.addEventListener("click", () => {
+    root.textContent = "Page loaded. Enjoy your remaining time.";
+    root.disabled = true;
     chrome.runtime.sendMessage({ type: "pageLoaded", url: location.href });
   });
   stage.append(root);

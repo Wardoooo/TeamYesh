@@ -9,7 +9,7 @@ export function mount(stage, state) {
   Object.assign(shade.style, {
     position: "absolute",
     inset: "0",
-    zIndex: "0",
+    zIndex: "1000",
     backgroundColor: "black",
     pointerEvents: "none"
   });
@@ -50,6 +50,7 @@ export function mount(stage, state) {
     if (event.deltaY < 0) increase();
   }, { passive: false });
 
+  // Clicking, Enter, and Space also work.
   wheel.addEventListener("click", increase);
 
   function onStorageChange(changes, area) {
