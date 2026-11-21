@@ -3,6 +3,8 @@
 // into your own file, or the phases will drift apart.
 
 export const CONFIG = {
+  // One peso is 60 seconds. Five pesos is 3 minutes. Ten pesos is 5 minutes.
+  // The total decides the rate. Reaching 5 or 10 replaces the stacked minutes.
   secondsPerCoin: 60,
   startingCoins: 5,
   codeLength: 6,
@@ -25,6 +27,19 @@ export const CONFIG = {
   aiProxyUrl: "",
   sounds: ["coin", "jingle", "buzz", "boot", "ding"]
 };
+
+// Time follows the total inserted, not each coin added on its own.
+// 1–4 pesos: 60 seconds each.
+// 5–9 pesos: 3 minutes. Five ₱1 coins drop back to 3 minutes, not 5.
+// Each full 10 pesos is 5 minutes, then the leftover uses the same rule.
+// ₱5 + five ₱1 is ₱10, so 5 minutes. ₱11 is 5 minutes + 60 seconds.
+export function secondsForPesos(total) {
+  const pesos = Math.max(0, Math.floor(Number(total) || 0));
+  const bundles = Math.floor(pesos / 10);
+  const rest = pesos % 10;
+  const restSeconds = rest >= 5 ? 3 * 60 : rest * CONFIG.secondsPerCoin;
+  return bundles * 5 * 60 + restSeconds;
+}
 
 export const PHASES = [
   "store",
@@ -56,7 +71,7 @@ export const STAT_KEYS = [
 // Messages (send these to background.js; do not call another module):
 // getState
 // entered            { page: "store" | "purse" | "portal" }
-// insertCoin         { amount: 1 | 5 | 10 }  each peso adds secondsPerCoin
+// insertCoin         { amount: 1 | 5 | 10 }  time comes from secondsForPesos(total)
 // startSession       { code }
 // captchaDone
 // pageLoaded         { url }

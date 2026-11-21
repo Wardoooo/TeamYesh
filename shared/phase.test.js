@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
+import { secondsForPesos } from "./config.js";
 import { freshState, makeCode, reduce } from "./phase.js";
 import { receiptRows } from "./receipt.js";
+
+assert.equal(secondsForPesos(1), 60);
+assert.equal(secondsForPesos(4), 240);
+assert.equal(secondsForPesos(5), 180);
+assert.equal(secondsForPesos(9), 180);
+assert.equal(secondsForPesos(10), 300);
+assert.equal(secondsForPesos(11), 360);
+assert.equal(secondsForPesos(15), 480);
+assert.equal(secondsForPesos(20), 600);
 
 const now = 1_000_000;
 let state = freshState();

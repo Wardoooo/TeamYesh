@@ -15,8 +15,14 @@ import { mount as mountChat, unmount as unmountChat } from "./chatbot.js";
 const LIVE = ["ads", "captcha", "browsing"];
 
 const GROUPS = {
-  ads: [[mountAds, unmountAds]],
-  captcha: [[mountCaptcha, unmountCaptcha]],
+  ads: [
+    [mountAds, unmountAds],
+    [mountBrightness, unmountBrightness]
+  ],
+  captcha: [
+    [mountCaptcha, unmountCaptcha],
+    [mountBrightness, unmountBrightness]
+  ],
   browsing: [
     [mountAds, unmountAds],
     [mountBrightness, unmountBrightness],

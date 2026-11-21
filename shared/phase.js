@@ -2,7 +2,7 @@
 // Pure session rules. background.js applies the result. No chrome APIs here,
 // so the rules can be checked without loading the extension.
 
-import { CONFIG, ENDING_PHASES, STAT_KEYS } from "./config.js";
+import { CONFIG, ENDING_PHASES, STAT_KEYS, secondsForPesos } from "./config.js";
 
 const PIPE = [
   "store",
@@ -18,6 +18,9 @@ const PIPE = [
 ];
 
 const LIVE = ["ads", "captcha", "browsing", "finale"];
+const BRIGHTNESS_PHASES = ["ads", "captcha", "browsing"];
+const BRIGHTNESS_DROP_INTERVAL_MS = 1000;
+const BRIGHTNESS_DROP_PER_INTERVAL = 2;
 
 export function emptyStats() {
   return {
@@ -46,6 +49,7 @@ export function freshState() {
     accessCode: "",
     credit: 0,
     brightness: 1,
+    brightnessTickAt: null,
     clearToken: 0,
     rating: 0,
     review: "",
@@ -64,7 +68,7 @@ export function makeCode() {
 }
 
 function sessionMs(inserted) {
-  return inserted * CONFIG.secondsPerCoin * 1000;
+  return secondsForPesos(inserted) * 1000;
 }
 
 function armSession(state, now) {
@@ -150,6 +154,26 @@ export function reduce(state, message, now) {
     }
   }
 
+  if (BRIGHTNESS_PHASES.includes(next.phase) && now < next.endsAt) {
+    const brightness = next.brightness ?? 1;
+
+    if (brightness > 1) {
+      const lastTick = next.brightnessTickAt ?? now;
+      const elapsed = Math.max(0, Math.floor((now - lastTick) / BRIGHTNESS_DROP_INTERVAL_MS));
+
+      next.brightness = Math.max(1, brightness - elapsed * BRIGHTNESS_DROP_PER_INTERVAL);
+      next.brightnessTickAt = lastTick + elapsed * BRIGHTNESS_DROP_INTERVAL_MS;
+    }
+
+    if (type === "increaseBrightness" && (next.brightness ?? 1) < 100) {
+      const current = next.brightness ?? 1;
+
+      if (current === 1) next.brightnessTickAt = now;
+      next.brightness = current + 1;
+      next.stats.brightnessTaps = (next.stats.brightnessTaps ?? 0) + 1;
+    }
+  }
+
   if (type === "addStat") {
     const key = message.key;
     const amount = Number(message.amount);
@@ -223,7 +247,10 @@ function applyGod(state, message, now) {
 
   if (action === "setBrightness") {
     const value = Math.round(Number(message.value));
-    if (Number.isFinite(value)) state.brightness = Math.min(100, Math.max(1, value));
+    if (Number.isFinite(value)) {
+      state.brightness = Math.min(100, Math.max(1, value));
+      state.brightnessTickAt = now;
+    }
     return;
   }
 
