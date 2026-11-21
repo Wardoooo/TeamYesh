@@ -125,6 +125,7 @@ section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="rep
 }
 
 [data-screen="goodbye"] {
+  min-height: min(640px, 75vh);
   position: relative;
   isolation: isolate;
   display: flex;

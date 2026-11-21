@@ -143,7 +143,8 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 .machine-tray { display: none; }
 
 /* Paper and wood surfaces leave the portal, support and review backgrounds in place. */
-.portal-page {
+.portal-page,
+body.ending-page:has([data-screen="goodbye"]:not([hidden])) {
   min-height: 100vh;
   background-color: #c4a36a;
   background-image:
@@ -151,6 +152,8 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
     linear-gradient(-45deg, rgba(155, 105, 42, 0.22) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(246, 222, 168, 0.28) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(246, 222, 168, 0.28) 75%);
+  background-repeat: repeat;
+  background-attachment: scroll;
   background-size: 56px 56px;
   background-position: 0 0, 0 28px, 28px -28px, -28px 0;
 }
