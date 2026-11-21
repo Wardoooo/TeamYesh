@@ -7,10 +7,11 @@
 ## Play the Chrome extension
 
 1. Open `chrome://extensions` in desktop Chrome and turn on **Developer mode**.
-2. Click **Load unpacked** and select the project folder containing `manifest.json`.
-3. Open **Pisonet From Hell** from Chrome's Extensions menu. Click the Piso WiFi machine in the store.
+2. Clone the repository in any terminal using this link https://github.com/Wardoooo/TeamYesh.git 
+2. Click **Load unpacked** and select the project folder containing `manifest.json`, which is where you cloned the repository.
+3. Open **Pisonet From Hell** or **TeamYesh** from Chrome's Extensions menu. Click the Piso WiFi machine in the store.
 4. Drag a virtual coin into the slot or use a coin button. Read the six-character code on the blinking LED, then continue to the portal.
-5. Enter the code, find the agreement in the terms, and click **sugot ko, yes**. The session opens Google in the same tab with the timer and ad overlay.
+5. Enter the code, find the agreement in the terms, and click **I agree**. The session opens Google in the same tab with the timer and ad overlay.
 
 The checked-in extension is ready to load without installing npm packages or running a build. Click the extension icon again to start a fresh run. This resets the current session and closes its demo tab.
 
