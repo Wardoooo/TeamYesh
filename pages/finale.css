@@ -32,18 +32,27 @@ textarea { display: block; width: 100%; resize: vertical; padding: 12px; margin-
 #error { padding: 12px; border: 1px solid #a00000; color: #a00000; }
 h1[tabindex="-1"]:focus { outline: none; }
 
-.ending-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
-.ending-header .brand { margin: 8px 0; }
-.receipt { border: 2px dashed #555; padding: 20px; margin: 24px 0; background: #fafafa; }
-.receipt summary { font-weight: bold; cursor: pointer; font-size: 20px; }
-.receipt dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; font: 14px/1.5 "Courier New", monospace; }
-.receipt dt { font-weight: bold; }
-.receipt dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
-.receipt-note { font-size: 13px; border-top: 1px dashed #777; padding-top: 14px; }
-.correction-stars { display: flex; gap: 6px; font-size: clamp(32px, 7vw, 56px); margin: 28px 0; }
-.correction-stars span { color: #bbb; }
-.correction-stars .already-filled { color: #8a5b00; }
-.correction-stars .being-corrected { animation: force-star 180ms var(--delay) forwards; }
-@keyframes force-star { to { color: #8a5b00; transform: scale(1.12); } }
-@media (prefers-reduced-motion: reduce) { .correction-stars .being-corrected { animation: none; color: #8a5b00; } }
-@media (max-width: 480px) { .receipt { padding: 14px; } .receipt dl { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; font-size: 13px; } }
+/* Show the Skeleton ratings mockup as the backdrop while the live form stays usable. */
+body:has(section[data-screen="survey"]:not([hidden])) {
+  min-height: 100vh;
+  padding: 0;
+  background: #17151b url("../assets/img/Skeleton%20(10).png") center / cover fixed no-repeat;
+}
+body:has(section[data-screen="survey"]:not([hidden])) .ending {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: clamp(20px, 5vw, 64px);
+  border: 0;
+  background: transparent;
+}
+body:has(section[data-screen="survey"]:not([hidden])) [data-screen="survey"] {
+  width: min(780px, 100%);
+  padding: clamp(24px, 5vw, 48px);
+  border: 2px solid rgba(255, 255, 255, .8);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .35);
+}
