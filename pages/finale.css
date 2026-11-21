@@ -27,6 +27,25 @@ legend { padding: 0 8px; font-weight: bold; }
 .feedback-label { display: block; margin: 20px 0 10px; font-weight: bold; }
 textarea { display: block; width: 100%; resize: vertical; padding: 12px; margin-bottom: 20px; border: 1px solid #777; font: 16px/1.5 Arial, sans-serif; }
 .review-result { padding: 24px; border: 2px solid #222; margin: 24px 0 32px; text-align: center; }
+.report-layout { display: grid; gap: clamp(16px, 3vw, 30px); margin-top: 24px; }
+.report-layout .review-result { margin: 0; }
+.report-actions .actions { justify-content: center; }
+.review-qr {
+  width: min(100%, 350px);
+  margin: 0 auto;
+  padding: clamp(10px, 2vw, 16px);
+  border: 2px dashed #775295;
+  border-radius: 20px;
+  background: #fcf7ff;
+}
+.review-qr figcaption { color: #452b58; font-size: clamp(20px, 3vw, 26px); font-weight: 800; }
+.review-qr p { margin: 8px 0 14px; font-size: 14px; }
+.review-qr img { display: block; width: 100%; height: auto; }
+@media (min-width: 760px) {
+  .report-layout { grid-template-columns: minmax(0, 1fr) minmax(260px, 350px); align-items: center; }
+  .review-qr { grid-area: 1 / 2 / span 2 / 3; }
+  .report-actions { grid-column: 1; }
+}
 .five-stars { color: #8a5b00; font-size: clamp(36px, 7vw, 56px); letter-spacing: .08em; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; }
 #error { padding: 12px; border: 1px solid #a00000; color: #a00000; }
@@ -75,32 +94,123 @@ h1[tabindex="-1"]:focus { outline: none; }
   .correction-stars .being-corrected { animation: none; color: #8a5b00; }
 }
 
-/* Show the Skeleton ratings mockup as the backdrop while the live form stays usable. */
-body:has(section[data-screen="survey"]:not([hidden])) {
+/* Keep the artwork throughout the review flow so the star correction does not cut to a different scene. */
+body:has(section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]):not([hidden])) {
   min-height: 100vh;
   padding: 0;
-  background: #17151b url("../assets/img/Skeleton%20(10).png") center / cover fixed no-repeat;
+  background: linear-gradient(#281c36b0, #281c36b0),
+    #2d213b url("../assets/img/Skeleton%20(9).png") center / cover fixed no-repeat;
 }
-body:has(section[data-screen="survey"]:not([hidden])) .ending {
+body:has(section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]):not([hidden])) .ending {
   display: grid;
   place-items: center;
+  align-content: center;
   width: 100%;
   min-height: 100vh;
   margin: 0;
-  padding: clamp(20px, 5vw, 64px);
+  padding: clamp(16px, 4vw, 46px);
   border: 0;
   background: transparent;
 }
-body:has(section[data-screen="survey"]:not([hidden])) [data-screen="survey"] {
-  width: min(780px, 100%);
-  padding: clamp(24px, 5vw, 48px);
-  border: 2px solid rgba(255, 255, 255, .8);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, .35);
+body:has(section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]):not([hidden])) .ending-header {
+  width: min(1200px, 100%);
+  color: #fff;
+  text-shadow: 0 1px 4px #21142b;
 }
+section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]) {
+  width: min(1200px, 100%);
+  padding: clamp(20px, 4vw, 46px);
+  border: 2px solid #fff;
+  border-radius: clamp(20px, 4vw, 52px);
+  background: #fffdfa;
+  color: #281d2b;
+  box-shadow: 0 20px 64px #1d0f36a0;
+  text-align: center;
+}
+#review-form { max-width: 760px; margin: 0 auto; }
+#review-form fieldset { min-inline-size: 0; padding: 8px 0; border: 0; }
+.ratings { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(2px, 2vw, 16px); }
+.ratings label { position: relative; display: grid; place-items: center; min-height: 44px; padding: 0; border: 0; border-radius: 10px; }
+.ratings input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.ratings label:has(input:focus-visible) { outline: 3px solid #775295; outline-offset: 2px; }
+.ratings label:has(input:checked), .ratings label:has(~ label input:checked) { background: #ffebaf; }
+.ratings label:hover { background: #f2e3f6; }
+.ratings span { font-size: clamp(27px, 6vw, 60px); line-height: 1.25; }
+.feedback-label { text-align: left; }
+#feedback { border-radius: 12px; background: #fcf7ff; }
+#submit-review { border-radius: 999px; background: #452b58; border-color: #452b58; }
+#submit-review:hover { background: #603e78; }
+[data-screen="correcting"] .correction-stars { justify-content: center; }
+.ending:has([data-screen="survey"]:not([hidden])) #error,
+.ending:has([data-screen="correcting"]:not([hidden])) #error {
+  background: #fffdfa;
+  border-radius: 12px;
+}
+
+[data-screen="goodbye"] {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: clamp(24px, 6vw, 72px);
+  text-align: center;
+}
+[data-screen="goodbye"]:has(.goodbye-background:not([hidden]))::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: #22180fbb;
+  content: "";
+}
+.goodbye-background {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+[data-screen="goodbye"]:has(.goodbye-background:not([hidden])) :is(h1, p) {
+  color: #fff8e9;
+  text-shadow: 0 1px 4px #21170f;
+}
+[data-screen="idle"] { text-align: center; }
+.skeleton-feature {
+  width: min(100%, 700px);
+  margin: 16px auto;
+  padding: 5px;
+  border: 1px solid #b79062;
+  border-radius: 10px;
+  background: var(--shop-weave, #b58852);
+  box-shadow: 0 12px 26px #1d0f362e;
+}
+.skeleton-feature img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-screen="goodbye"]:not([hidden]) .skeleton-feature img { animation: farewell-nod 440ms ease-out both; }
+  @keyframes farewell-nod {
+    0%, 100% { transform: rotate(0); }
+    55% { transform: rotate(-.65deg); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goodbye-background, [data-screen="goodbye"]::before { display: none; }
+  [data-screen="goodbye"]:has(.goodbye-background:not([hidden])) :is(h1, p) {
+    color: inherit;
+    text-shadow: none;
+  }
+}
+
+
 @media (max-width: 560px) {
   .receipt-paper { min-height: 920px; padding: 86px 48px 100px; }
   .receipt-paper .diploma p { font-size: 14px; }
 }
-

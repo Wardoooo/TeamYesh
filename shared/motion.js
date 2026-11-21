@@ -28,10 +28,13 @@ function setup(gsap, ScrollTrigger) {
     if (!section.getClientRects().length || seen.has(section)) return;
     seen.add(section);
     const targets = [...section.querySelectorAll(
-      "h1, h2, h3, p, li, .step, button, a.skip-btn, img"
+      "h1, h2, h3, p, li, .step, button, a.skip-btn, img, [data-reveal-group]"
     )].filter((node) => node.getClientRects().length);
     // Leave interactive hitboxes and user-controlled drag transforms alone.
-    const eligible = targets.filter((node) => !node.closest(".coins, .wifi-hotspot, .tools"));
+    const eligible = targets.filter((node) => {
+      const group = node.closest("[data-reveal-group]");
+      return (!group || group === node) && !node.closest(".store-page .stage, .purse-page .stage, .coins, .wifi-hotspot, .tools");
+    });
     const inside = eligible.filter((node) => node.getBoundingClientRect().top < innerHeight * 0.94);
     if (inside.length) timeline.from(inside, {
       opacity: 0, y: 9, duration: 0.38, stagger: { amount: Math.min(0.24, (inside.length - 1) * 0.04) }, clearProps: "opacity,transform"
@@ -58,10 +61,13 @@ function setup(gsap, ScrollTrigger) {
 
   const entrance = gsap.timeline({ defaults: { ease: "power2.out" } });
   const root = document.querySelector("main, .page, .sheet:not([hidden]), body > .stage");
-  if (root) entrance.from(root, { opacity: 0.25, duration: 0.44, clearProps: "opacity" });
+  const landing = root?.matches(".store-page .stage");
+  if (root && !landing) entrance.from(root, { opacity: 0.25, duration: 0.44, clearProps: "opacity" });
+  const hint = landing && root.querySelector(".hint");
+  if (hint) entrance.from(hint, { opacity: 0, duration: 0.5, clearProps: "opacity" });
   const nav = document.querySelector("nav, .topbar, .ads-head");
   if (nav) entrance.from(nav, { opacity: 0.35, y: -7, duration: 0.36, clearProps: "opacity,transform" }, 0);
-  if (root) {
+  if (root && !landing) {
     const sections = [...root.querySelectorAll(":scope > section")];
     if (sections.length) sections.forEach((section) => animateSection(section, entrance));
     else if (root.matches("body > .stage")) {
@@ -72,11 +78,11 @@ function setup(gsap, ScrollTrigger) {
 
   function bindFeedback(scope, signal) {
     const target = (event) => event.target.closest?.(
-      "button:not(:disabled), .topbar a, nav a, a.skip-btn, a.next, .step, .rates, .ad-frame"
+      "button:not(:disabled), .topbar a, nav a, a.skip-btn, a.next, .shop-button, .step, .rates, .ad-frame"
     );
     const feedback = context.add(null, (event, scale, boundary = false) => {
       const element = target(event);
-      if (!element || (boundary && element.contains(event.relatedTarget))) return;
+      if (!element || element.closest(".purse-page .stage") || (boundary && element.contains(event.relatedTarget))) return;
       gsap.to(element, {
         scale, duration: 0.22, ease: "power2.out", overwrite: "auto",
         clearProps: scale === 1 ? "transform" : ""

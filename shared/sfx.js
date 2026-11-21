@@ -5,6 +5,7 @@ let context = null;
 let muted = false;
 let pendingCue = null;
 const controls = new Set();
+const preferenceListeners = new Set();
 const voices = new Set();
 const lastPlayed = new Map();
 const patterns = {
@@ -21,6 +22,7 @@ function updateControls() {
     button.setAttribute("aria-label", muted ? "Unmute sound effects" : "Mute sound effects");
     button.setAttribute("aria-pressed", String(muted));
   }
+  for (const listener of preferenceListeners) listener(muted);
 }
 
 const preferences = (async () => {
@@ -112,6 +114,14 @@ export async function setMuted(value) {
     if (canUseExtension()) await chrome.storage.local.set({ soundMuted: muted });
     else localStorage.setItem("pisonetSoundMuted", String(muted));
   } catch { /* Keep the local toggle working even without storage. */ }
+}
+
+export function onSoundPreference(listener) {
+  preferenceListeners.add(listener);
+  preferences.then(() => {
+    if (preferenceListeners.has(listener)) listener(muted);
+  });
+  return () => preferenceListeners.delete(listener);
 }
 
 export function mountSoundControl(parent) {

@@ -43,6 +43,7 @@ let context = null;
 let muted = false;
 let pendingCue = null;
 const controls = new Set();
+const preferenceListeners = new Set();
 const voices = new Set();
 const lastPlayed = new Map();
 const patterns = {
@@ -59,6 +60,7 @@ function updateControls() {
     button.setAttribute("aria-label", muted ? "Unmute sound effects" : "Mute sound effects");
     button.setAttribute("aria-pressed", String(muted));
   }
+  for (const listener of preferenceListeners) listener(muted);
 }
 
 const preferences = (async () => {
@@ -152,6 +154,14 @@ async function setMuted(value) {
   } catch { /* Keep the local toggle working even without storage. */ }
 }
 
+function onSoundPreference(listener) {
+  preferenceListeners.add(listener);
+  preferences.then(() => {
+    if (preferenceListeners.has(listener)) listener(muted);
+  });
+  return () => preferenceListeners.delete(listener);
+}
+
 function mountSoundControl(parent) {
   const button = document.createElement("button");
   button.type = "button";
@@ -173,7 +183,7 @@ function mountSoundControl(parent) {
   return () => { controls.delete(button); button.remove(); };
 }
 
-return { play, setMuted, mountSoundControl };
+return { play, setMuted, onSoundPreference, mountSoundControl };
 })();
 modules["overlay/ads-data.js"] = (() => {
 // Image and video cards share the normal ad rotation.

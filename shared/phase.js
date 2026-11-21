@@ -204,7 +204,7 @@ export function reduce(state, message, now) {
     if (next.phase !== "report") {
       error = "Finish your review before starting again.";
     } else {
-      Object.assign(next, freshState(), { phase: "purse", accessCode: makeCode() });
+      Object.assign(next, freshState());
     }
   }
 

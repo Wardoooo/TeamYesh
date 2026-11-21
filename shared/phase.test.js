@@ -123,7 +123,7 @@ for (let stars = 1; stars <= 5; stars += 1) {
   assert.equal(reviewed.review, "The ads were outrageous.");
   const restarted = reduce(reviewed, { type: "restartSession" }, now);
   assert.equal(restarted.error, "");
-  assert.equal(restarted.state.phase, "purse");
+  assert.equal(restarted.state.phase, "store");
   assert.equal(restarted.state.inserted, 0);
   assert.equal(restarted.state.endsAt, 0);
   assert.equal(restarted.state.adsUntil, 0);
@@ -132,8 +132,11 @@ for (let stars = 1; stars <= 5; stars += 1) {
   assert.equal(restarted.state.browsingStartedAt, 0);
   assert.equal(restarted.state.rating, 0);
   assert.equal(restarted.state.review, "");
-  assert.equal(restarted.state.accessCode.length, 6);
-  const coin = reduce(restarted.state, { type: "insertCoin", amount: 1 }, now).state;
+  assert.equal(restarted.state.accessCode, "");
+  const purse = reduce(restarted.state, { type: "entered", page: "purse" }, now).state;
+  assert.equal(purse.phase, "purse");
+  assert.equal(purse.accessCode.length, 6);
+  const coin = reduce(purse, { type: "insertCoin", amount: 1 }, now).state;
   const portal = reduce(coin, { type: "entered", page: "portal" }, now).state;
   const second = reduce(portal, { type: "startSession", code: portal.accessCode }, now);
   assert.equal(second.state.phase, "ads");

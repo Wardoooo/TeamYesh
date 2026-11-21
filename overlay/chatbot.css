@@ -4,21 +4,27 @@
   bottom: 16px;
   z-index: 2147483647;
   pointer-events: none;
-  color: #21150c;
+  color: #302417;
   font: 15px/1.4 "Segoe UI", sans-serif;
 }
 
 .chat-dock { display: grid; justify-items: end; gap: 10px; }
 button, section { pointer-events: auto; }
 button {
-  border: 2px solid #21150c;
+  border: 1px solid #243d2d;
+  border-radius: 9px;
+  min-height: 44px;
   padding: 8px 12px;
-  color: #21150c;
-  background: #facc15;
+  color: #fff8e9;
+  background: #365340;
   font: inherit;
   font-weight: 800;
   cursor: pointer;
 }
+button:hover { background: #243d2d; }
+button:focus-visible, input:focus-visible { outline: 3px solid #a56229; outline-offset: 2px; }
+button.chat-toggle { color: #261b11; background: #edc477; border-color: #b68343; box-shadow: 0 3px 0 #94622d; }
+button.chat-toggle:hover { background: #ffda8d; }
 button:disabled { opacity: .6; cursor: wait; }
 section {
   box-sizing: border-box;
@@ -26,18 +32,19 @@ section {
   max-height: calc(100dvh - 84px);
   overflow: auto;
   padding: 14px;
-  background: #f3e0be;
-  border: 3px solid #21150c;
-  box-shadow: 5px 5px 0 #c81e1e;
+  background: #fff6e4;
+  border: 1px solid #a8783b;
+  border-radius: 14px;
+  box-shadow: 0 14px 36px #24160e55;
 }
-h2 { font-size: 19px; margin: 0; }
+h2 { font: 700 21px/1.2 Georgia, "Times New Roman", serif; margin: 0; }
 p { margin: 6px 0; }
 p:empty { display: none; }
 ol { list-style: none; margin: 0; padding: 4px; max-height: min(260px, 40dvh); overflow: auto; }
-li { padding: 7px 9px; margin: 5px 0; background: #fff8e5; overflow-wrap: anywhere; }
+li { padding: 7px 9px; margin: 5px 0; border-radius: 7px; background: #f8e8c9; overflow-wrap: anywhere; }
 li.user { margin-left: 20px; background: #d2e9d7; }
 li.user::before { content: "You · "; font-weight: bold; }
 li.model::before { content: "Piso · "; font-weight: bold; }
 form { display: flex; gap: 6px; margin-top: 8px; }
-input { flex: 1; min-width: 0; border: 2px solid #21150c; padding: 8px; font: inherit; }
+input { flex: 1; min-width: 0; border: 1px solid #a98761; border-radius: 8px; padding: 8px; font: inherit; }
 [hidden] { display: none; }
