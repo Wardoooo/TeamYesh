@@ -1,0 +1,100 @@
+/* Keep each ending screen and its controls together in the available viewport. */
+body.ending-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.ending-page .shop-footer { padding-block: 8px; }
+#finale-content {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  width: 100%;
+  padding: 64px 24px 16px;
+}
+body.ending-page:has([data-screen="diploma"]:not([hidden])) #finale-content {
+  flex: 0 0 auto;
+  width: min(900px, calc(100% - 32px));
+  margin: auto;
+  padding: 12px 24px;
+}
+.ending-page [data-screen="diploma"] .brand { margin: 0 0 8px; }
+.ending-page [data-screen="diploma"] > :is(h1, p) { margin-block: 8px; }
+.ending-page [data-screen="diploma"] .diploma {
+  margin: 12px 0;
+  padding: 12px 24px;
+}
+.ending-page .diploma :is(h2, p) { margin-block: 8px; }
+.ending-page .diploma .signature { margin-top: 12px; padding-top: 10px; }
+.ending-page section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]) {
+  padding: 20px 28px;
+}
+.ending-page section > :is(h1, h2, p) { margin-block: 8px; }
+.ending-page #review-form fieldset { margin-block: 12px; padding-block: 0; }
+.ending-page .feedback-label { margin-block: 12px 8px; }
+.ending-page #feedback { margin-bottom: 12px; height: 100px; }
+.ending-page .report-layout { margin-top: 12px; gap: 12px 24px; }
+.ending-page .report-layout .review-result { padding: 12px 18px; }
+.ending-page .report-layout p { margin-block: 8px; }
+.ending-page .report-actions h2 { margin-block: 8px; }
+.ending-page .review-qr { width: 100%; padding: 10px; }
+.ending-page .review-qr img {
+  width: auto;
+  max-width: 100%;
+  max-height: min(240px, 33dvh);
+  margin-inline: auto;
+  object-fit: contain;
+}
+.ending-page .receipt { margin-block: 12px 0; padding: 12px; }
+.ending-page [data-screen="report"]:has(.receipt[open]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: center;
+  gap: 8px 24px;
+  padding-block: 18px;
+}
+.ending-page [data-screen="report"]:has(.receipt[open]) > h1 { grid-column: 1 / -1; }
+.ending-page [data-screen="report"] .receipt[open] { margin: 0; }
+.ending-page .receipt dl { gap: 0 12px; margin-block: 8px; }
+.ending-page .receipt-note { margin-bottom: 0; padding-top: 8px; }
+.ending-page [data-screen="goodbye"] { min-height: min(560px, calc(100dvh - 132px)); }
+.ending-page [data-screen="idle"] .skeleton-feature { width: min(600px, 65vw); }
+
+@media (min-width: 760px) {
+  .ending-page .report-layout { grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); }
+  .ending-page [data-screen="report"]:has(.receipt[open]) .report-layout {
+    grid-template-columns: minmax(0, 1fr) 200px;
+  }
+}
+@media (max-width: 759px) {
+  #finale-content { padding: 60px 12px 12px; }
+  body.ending-page:has([data-screen="diploma"]:not([hidden])) #finale-content {
+    width: calc(100% - 24px);
+    padding: 12px;
+    margin: auto;
+  }
+  .ending-page [data-screen="diploma"] .diploma { padding: 8px 12px; }
+  .ending-page section:is([data-screen="survey"], [data-screen="correcting"], [data-screen="report"], [data-screen="goodbye"]) { padding: 16px; }
+  .ending-page .report-layout { grid-template-columns: minmax(0, 1fr) minmax(110px, 35%); gap: 8px; align-items: center; }
+  .ending-page .review-qr { grid-column: 2; grid-row: 1; }
+  .ending-page .report-actions { grid-column: 1 / -1; }
+  .ending-page .report-layout .review-result { padding: 8px; }
+  .ending-page .review-qr img { max-height: 160px; }
+  .ending-page [data-screen="report"]:has(.receipt[open]) { display: block; }
+  .ending-page .receipt dl { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+@media (max-width: 759px) {
+  .ending-page .report-layout { grid-template-columns: minmax(0, 1fr); }
+  .ending-page .review-qr {
+    grid-column: auto;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 100px;
+    align-items: center;
+    gap: 4px 8px;
+  }
+  .ending-page .review-qr img { grid-column: 2; grid-row: 1 / span 2; max-height: 140px; }
+  .ending-page .review-qr p { margin: 0; }
+  .ending-page .report-layout p { margin-block: 4px; }
+}
