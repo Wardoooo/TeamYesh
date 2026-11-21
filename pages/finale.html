@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Piso WiFi — Certificate</title>
+  <link rel="stylesheet" href="kiosk.css">
+  <link rel="stylesheet" href="../overlay/popups.css">
+</head>
+<body class="tarp-body">
+  <main class="tarp">
+    <div class="tools" id="tools"></div>
+    <section data-screen="finale">
+      <h1>CONGRATULATIONS</h1>
+      <p>You are now officially qualified to use the internet.</p>
+      <p class="note">Printing your certificate. This will take longer than your remaining time.</p>
+    </section>
+    <section data-screen="expired" hidden>
+      <h1>SESSION EXPIRED</h1>
+      <p>PLEASE INSERT ANOTHER COIN.</p>
+      <button type="button" id="expired-next">INSERT ANOTHER COIN</button>
+    </section>
+    <section data-screen="survey" hidden>
+      <h1>RATE YOUR WIFI</h1>
+      <p class="note">M5: any rating becomes 5 stars. The buttons already do that.</p>
+      <div id="stars"></div>
+    </section>
+    <section data-screen="report" hidden>
+      <h1>CERTIFIED SUFFERING GRADUATE</h1>
+      <pre id="stats"></pre>
+      <div id="concierge"></div>
+    </section>
+    <p class="message" id="other">The ending has not started.</p>
+    <p class="toast"></p>
+  </main>
+  <script type="module" src="finale.js"></script>
+</body>
+</html>

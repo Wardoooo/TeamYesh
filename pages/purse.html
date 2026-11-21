@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Piso WiFi — Machine</title>
+  <link rel="stylesheet" href="purse.css">
+</head>
+<body>
+  <div class="tools" id="tools"></div>
+  <main class="stage">
+    <section class="bamboo">
+      <div class="face">
+        <div class="logo">PISO WIFI</div>
+        <div class="upper">
+          <div class="lcd-bezel">
+            <div class="lcd" id="led" aria-live="polite">
+              <div>WIFI NAME:</div>
+              <div>PISO_WIFI</div>
+              <div>PHP 1.00 = 30 MINS*</div>
+            </div>
+          </div>
+          <div class="acceptor" id="slot" role="group" aria-label="Coin slot">
+            <div class="disc">
+              <div class="slit" id="slit"></div>
+            </div>
+            <div class="acceptor-label">INSERT COIN<br>HULOG PISO</div>
+            <div class="lever"></div>
+          </div>
+        </div>
+        <div class="mid">
+          <div class="lock" aria-hidden="true"><span></span></div>
+          <svg class="phone" viewBox="0 0 210 125" fill="none" aria-hidden="true">
+            <path d="M58 46 Q46 60 58 74" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M47 38 Q30 60 47 82" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="67" cy="60" r="3" fill="#fff"/>
+            <path d="M152 46 Q164 60 152 74" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M163 38 Q180 60 163 82" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="143" cy="60" r="3" fill="#fff"/>
+            <path d="M44 125 L68 88 L74 52 C74 46 82 46 82 52 L82 96 L128 96 L132 108 L104 125 Z" fill="#f4b183" stroke="#1f1209" stroke-width="2.5"/>
+            <rect x="76" y="14" width="58" height="92" rx="9" fill="#d6d3d1" stroke="#1f1209" stroke-width="3"/>
+            <rect x="81" y="23" width="48" height="72" rx="3" fill="#1c1917"/>
+            <text x="105" y="52" fill="#fef08a" font-size="11" font-weight="700" text-anchor="middle">INSERT</text>
+            <text x="105" y="68" fill="#fde047" font-size="11" font-weight="700" text-anchor="middle">COIN</text>
+          </svg>
+        </div>
+        <div class="plaques">
+          <div class="plaque"><b class="n n1">1</b><strong>CONNECT</strong><span>KUMONEKTA</span></div>
+          <div class="plaque"><b class="n n2">2</b><strong>INSERT COIN</strong><span>HULOG BARYA</span></div>
+          <div class="plaque"><b class="n n3">3</b><strong>START SURFING</strong><span>MAG-INTERNET!</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="deck">
+      <div class="deck-head">
+        <span>Step 1: Drop the peso into the slot</span>
+        <span>₱1 = 60 seconds</span>
+      </div>
+      <div class="coins" id="coins">
+        <div class="home">
+          <div class="peso p1" data-amount="1" role="button" aria-label="One peso, 60 seconds">₱1</div>
+          <span>+60 Secs</span>
+        </div>
+        <div class="home">
+          <div class="peso p5" data-amount="5" role="button" aria-label="Five pesos, 5 minutes">₱5</div>
+          <span>+5 Mins</span>
+        </div>
+        <div class="home">
+          <div class="peso p10" data-amount="10" role="button" aria-label="Ten pesos, 10 minutes">₱10</div>
+          <span>+10 Mins</span>
+        </div>
+      </div>
+      <p class="tag">Pay more. Browse less. Suffer always.</p>
+      <p class="balance" id="balance">Inserted: ₱0 · Time: 0:00</p>
+      <a class="next" id="next" href="portal.html">Continue</a>
+      <p class="message" id="message"></p>
+    </section>
+  </main>
+  <p class="toast"></p>
+  <script type="module" src="purse.js"></script>
+</body>
+</html>

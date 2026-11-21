@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How to use</title>
+  <link rel="stylesheet" href="kiosk.css">
+</head>
+<body class="tarp-body">
+  <main class="tarp">
+    <div class="tools" id="tools"></div>
+    <h1>HOW TO LOAD THE DEMO</h1>
+    <ol class="lies">
+      <li>Chrome → Extensions → Developer mode → Load unpacked → this folder.</li>
+      <li>Click the extension icon. It opens the store. Click the WiFi machine.</li>
+      <li>Drag a peso into the machine slot. ₱1 is 60 seconds, ₱5 is 5 minutes, ₱10 is 10 minutes. The code blinks on the LED.</li>
+      <li>Type the 6 blinking characters. A correct code opens Google.</li>
+      <li>The first half of the time is the ads phase. Then CAPTCHA, then browsing.</li>
+      <li>On a real page, click the bamboo timer for the session tools. There is no GOD MODE button on the browser.</li>
+      <li>Skip caps at 3. Catching the fleeing X expires the session. CAPTCHA caps at 4. Disconnects cap at 2. The terms button settles after 2 moves.</li>
+      <li>The certificate page replaces the tab. When time hits 0 it expires, any star rating becomes 5, then the report.</li>
+    </ol>
+    <p class="note">M5 owns the real visitor-facing copy. The list above is for the team.</p>
+    <p class="toast"></p>
+  </main>
+  <script type="module">
+    import { mountPageTools } from "./god.js";
+    mountPageTools(document.getElementById("tools"));
+  </script>
+</body>
+</html>
