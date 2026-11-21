@@ -80,11 +80,11 @@ button {
 }
 
 .yes {
-  font-family: "Times New Roman", Times, serif;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #1c1208;
+  font-family: inherit;
+  font-size: 1.08em;
+  font-weight: 900;
+  line-height: inherit;
+  color: inherit;
   background: none;
   border: none;
   padding: 0;

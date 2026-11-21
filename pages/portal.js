@@ -65,7 +65,7 @@ document.getElementById("yes").addEventListener("click", async () => {
 
 document.getElementById("giveup").addEventListener("click", () => {
   clue.hidden = false;
-  clue.textContent = "Look through the middle. One line is larger and heavier than the sentences around it.";
+  clue.textContent = "Look through the middle. The words I agree are heavier than the sentence around them.";
 });
 
 function code() {
