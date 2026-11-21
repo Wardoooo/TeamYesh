@@ -82,7 +82,7 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
     if (pathname === "/api/chat") return chat(request, response);
     const path = pathname === "/" ? "/index.html" : pathname;
     const type = mime[path.split(".").at(-1)];
-    if (request.method !== "GET" || !type || !/^\/(?:index\.(?:html|js)|page[234]\.html|(?:assets|css|pages|shared|overlay)\/(?:[\w-]+\/)*[\w-]+\.[a-z]+)$/.test(path)) {
+    if (request.method !== "GET" || !type || !/^\/(?:index\.(?:html|js)|(?:assets|css|pages|shared|overlay)\/(?:[\w-]+\/)*[\w-]+\.[a-z]+)$/.test(path)) {
       return response.writeHead(404).end();
     }
     const file = new URL(`.${path}`, import.meta.url);
