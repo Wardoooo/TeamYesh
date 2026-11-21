@@ -26,8 +26,7 @@ const GROUPS = {
   browsing: [
     [mountAds, unmountAds],
     [mountBrightness, unmountBrightness],
-    [mountLoading, unmountLoading],
-    [mountChat, unmountChat]
+    [mountLoading, unmountLoading]
   ]
 };
 
@@ -165,6 +164,8 @@ function boot() {
   function render(state) {
     if (!state) return;
     const live = LIVE.includes(state.phase) && state.endsAt;
+    if (live) mountChat(root);
+    else unmountChat();
     bar.hidden = !live;
     frame.hidden = !live;
     if (!live) panel.hidden = true;
