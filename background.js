@@ -8,13 +8,40 @@ import { localChatUrl, requestNonsense } from "./shared/ai.js";
 
 const LIVE = ["ads", "captcha", "browsing", "finale"];
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ state: freshState() });
+chrome.runtime.onInstalled.addListener(async () => {
+  const stored = await chrome.storage.local.get("state");
+  if (!stored.state) await chrome.storage.local.set({ state: freshState() });
 });
 
-chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
+// One click reloads the files from disk, drops the old session, and opens the store.
+// You load the unpacked extension once. You do not remove it to pick up edits.
+chrome.action.onClicked.addListener(async () => {
+  await chrome.alarms.clearAll();
+  await closeDemoTabs();
+  await chrome.storage.local.set({ reopenStore: true });
+  chrome.runtime.reload();
 });
+
+openStoreAfterReload();
+
+async function openStoreAfterReload() {
+  const stored = await chrome.storage.local.get("reopenStore");
+  if (!stored.reopenStore) return;
+  await chrome.alarms.clearAll();
+  await chrome.storage.local.set({ state: freshState(), reopenStore: false });
+  await chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
+}
+
+async function closeDemoTabs() {
+  const stored = await chrome.storage.local.get("state");
+  const sessionTabId = stored.state?.sessionTabId || 0;
+  const origin = chrome.runtime.getURL("");
+  const tabs = await chrome.tabs.query({});
+  const ids = tabs
+    .filter((tab) => tab.id && (tab.url?.startsWith(origin) || tab.id === sessionTabId))
+    .map((tab) => tab.id);
+  if (ids.length) await chrome.tabs.remove(ids);
+}
 
 chrome.alarms.onAlarm.addListener(() => {
   enqueue({ type: "tickCheck" }, {});
