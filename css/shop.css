@@ -143,7 +143,18 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 .machine-tray { display: none; }
 
 /* Paper and wood surfaces leave the portal, support and review backgrounds in place. */
-.portal-page { display: flex; flex-direction: column; padding: 0; min-height: 100vh; }
+:is(.portal-page, .ending-page:has([data-screen="diploma"]:not([hidden]))) {
+  min-height: 100vh;
+  background-color: #c4a36a;
+  background-image:
+    linear-gradient(45deg, rgba(155, 105, 42, 0.22) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(155, 105, 42, 0.22) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(246, 222, 168, 0.28) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(246, 222, 168, 0.28) 75%);
+  background-size: 56px 56px;
+  background-position: 0 0, 0 28px, 28px -28px, -28px 0;
+}
+.portal-page { display: flex; flex-direction: column; padding: 0; }
 .portal-page > .tools { position: relative; inset: auto; display: flex; flex-wrap: wrap; gap: 6px; width: min(720px, calc(100% - 28px)); margin: 16px auto; z-index: 3; }
 .portal-page .god-panel { position: absolute; top: calc(100% + 4px); left: 0; }
 .portal-page .sheet { box-sizing: border-box; width: min(720px, calc(100% - 28px)); margin: 0 auto 32px; }

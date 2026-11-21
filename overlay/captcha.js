@@ -137,12 +137,8 @@ function node(tag, text, className) {
   return element;
 }
 
-export function mount(stage, state = {}) {
+export function mount(stage) {
   unmount();
-
-  const remaining = Math.max(0, (Number(state.endsAt) - Date.now()) / 1000);
-  const count = remaining <= 15 ? 1 : remaining <= 35 ? 2 : 3;
-  const cap = Math.max(1, Math.min(count, Number(CONFIG.captchaCap) || 3));
 
   challenges = ["financial", "anger", "human", "speed"];
 
@@ -152,7 +148,7 @@ export function mount(stage, state = {}) {
     [challenges[i], challenges[j]] = [challenges[j], challenges[i]];
   }
 
-  challenges = challenges.slice(0, cap);
+  challenges = challenges.slice(0, CONFIG.captchaCap);
   index = 0;
   completing = false;
 
