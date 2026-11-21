@@ -5,3 +5,9 @@ export const ADS = [
   { kind: "image", src: "assets/img/premium_photo-1664475926084-d20248544896.avif" },
   { kind: "image", src: "assets/img/photo-1557858310-9052820906f7.avif" }
 ];
+
+export const SCAM_VIDEO = {
+  kind: "video",
+  src: "assets/videos/scamvideo.mp4",
+  fullscreen: true
+};

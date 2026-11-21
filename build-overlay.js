@@ -3,7 +3,9 @@ import { posix } from "node:path";
 
 const modules = new Map();
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
-const styles = ["overlay/overlay.css", "overlay/ads.css", "overlay/popups.css"].map(read).join("\n");
+const styles = ["overlay/overlay.css", "overlay/ads.css", "overlay/popups.css"]
+  .map(path => read(path).replace(/\r\n/g, "\n"))
+  .join("\n");
 
 function include(path) {
   if (modules.has(path)) return;
