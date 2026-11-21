@@ -2,6 +2,179 @@
 chrome.runtime.sendMessage({ type: "getState" }).then(({ state }) => {
   if (!state || !["ads", "captcha", "browsing"].includes(state.phase)) return;
   const modules = {};
+modules["shared/api.js"] = (() => {
+// Owner: M1
+// Small helper for extension pages. Modules talk to background.js through this.
+
+function canUseExtension() {
+  return typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
+}
+
+function send(message) {
+  if (!canUseExtension()) {
+    return Promise.resolve({ ok: false, offline: true });
+  }
+  return chrome.runtime.sendMessage(message);
+}
+
+function getState() {
+  return send({ type: "getState" }).then((result) => result?.state || null);
+}
+
+function onState(callback) {
+  if (!canUseExtension()) return () => {};
+  const listener = (changes, area) => {
+    if (area === "local" && changes.state) callback(changes.state.newValue);
+  };
+  chrome.storage.onChanged.addListener(listener);
+  getState().then((state) => {
+    if (state) callback(state);
+  });
+  return () => chrome.storage.onChanged.removeListener(listener);
+}
+
+return { canUseExtension, send, getState, onState };
+})();
+modules["shared/sfx.js"] = (() => {
+// Short local tones work before the team's final sound assets are ready.
+const { canUseExtension } = modules["shared/api.js"];
+
+let context = null;
+let muted = false;
+let pendingCue = null;
+const controls = new Set();
+const voices = new Set();
+const lastPlayed = new Map();
+const patterns = {
+  coin: [[1400, 0.07], [2100, 0.09]],
+  jingle: [[660, 0.09], [880, 0.09], [1100, 0.13]],
+  buzz: [[140, 0.12], [110, 0.12]],
+  boot: [[330, 0.1], [440, 0.1], [660, 0.16]],
+  ding: [[523, 0.1], [659, 0.1], [784, 0.1], [1047, 0.25]]
+};
+
+function updateControls() {
+  for (const button of controls) {
+    button.textContent = muted ? "Sound: off" : "Sound: on";
+    button.setAttribute("aria-label", muted ? "Unmute sound effects" : "Mute sound effects");
+    button.setAttribute("aria-pressed", String(muted));
+  }
+}
+
+const preferences = (async () => {
+  try {
+    if (canUseExtension()) {
+      muted = Boolean((await chrome.storage.local.get("soundMuted")).soundMuted);
+    } else {
+      muted = localStorage.getItem("pisonetSoundMuted") === "true";
+    }
+  } catch { /* Sound must never block the demo. */ }
+  updateControls();
+})();
+
+if (canUseExtension()) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.soundMuted) {
+      muted = Boolean(changes.soundMuted.newValue);
+      if (muted) stopSounds();
+      updateControls();
+    }
+  });
+}
+
+function stopSounds() {
+  pendingCue = null;
+  for (const voice of voices) {
+    try { voice.stop(); } catch { /* It may already have ended. */ }
+  }
+  voices.clear();
+}
+
+function unlock() {
+  if (muted) return;
+  try {
+    const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!AudioContext) return;
+    context ||= new AudioContext();
+    context.resume().then(() => {
+      const cue = pendingCue;
+      pendingCue = null;
+      if (cue) play(cue);
+    }).catch(() => {});
+  } catch { /* A browser can decline audio; the game still works. */ }
+}
+
+// Each webpage needs its own user gesture to unlock browser audio.
+if (typeof document !== "undefined") {
+  document.addEventListener("pointerdown", unlock, { capture: true });
+  document.addEventListener("keydown", unlock, { capture: true });
+}
+
+async function play(name) {
+  await preferences;
+  if (muted || !patterns[name]) return false;
+  if (!context || context.state !== "running") {
+    pendingCue = name;
+    return false;
+  }
+  const now = Date.now();
+  if (now - (lastPlayed.get(name) || 0) < 600) return false;
+  lastPlayed.set(name, now);
+  let at = context.currentTime + 0.01;
+  try {
+    for (const [frequency, duration] of patterns[name]) {
+      const voice = context.createOscillator();
+      const volume = context.createGain();
+      voice.type = name === "buzz" ? "sawtooth" : "triangle";
+      voice.frequency.setValueAtTime(frequency, at);
+      volume.gain.setValueAtTime(0.0001, at);
+      volume.gain.exponentialRampToValueAtTime(0.035, at + 0.01);
+      volume.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+      voice.connect(volume);
+      volume.connect(context.destination);
+      voices.add(voice);
+      voice.onended = () => { voices.delete(voice); voice.disconnect(); volume.disconnect(); };
+      voice.start(at);
+      voice.stop(at + duration + 0.02);
+      at += duration + 0.025;
+    }
+    return true;
+  } catch { return false; }
+}
+
+async function setMuted(value) {
+  muted = Boolean(value);
+  if (muted) stopSounds();
+  updateControls();
+  try {
+    if (canUseExtension()) await chrome.storage.local.set({ soundMuted: muted });
+    else localStorage.setItem("pisonetSoundMuted", String(muted));
+  } catch { /* Keep the local toggle working even without storage. */ }
+}
+
+function mountSoundControl(parent) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.soundControl = "";
+  Object.assign(button.style, {
+    pointerEvents: "auto", cursor: "pointer", border: "2px solid #222",
+    background: "#fff", color: "#222", padding: "8px 10px", minHeight: "40px",
+    font: "700 12px Arial, sans-serif", whiteSpace: "nowrap"
+  });
+  parent.append(button);
+  controls.add(button);
+  updateControls();
+  button.addEventListener("click", async () => {
+    const next = !muted;
+    if (!next) { muted = false; unlock(); }
+    await setMuted(next);
+    if (!next) play("ding");
+  });
+  return () => { controls.delete(button); button.remove(); };
+}
+
+return { play, setMuted, mountSoundControl };
+})();
 modules["overlay/ads-data.js"] = (() => {
 const ADS = [
   { kind: "image", src: "assets/img/photo-1562577308-9e66f0c65ce5.avif" },
@@ -88,56 +261,6 @@ const STAT_KEYS = [
 // received the click. Files live in assets/sounds/<name>.mp3.
 
 return { CONFIG, PHASES, ENDING_PHASES, STAT_KEYS };
-})();
-modules["shared/api.js"] = (() => {
-// Owner: M1
-// Small helper for extension pages. Modules talk to background.js through this.
-
-function canUseExtension() {
-  return typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
-}
-
-function send(message) {
-  if (!canUseExtension()) {
-    return Promise.resolve({ ok: false, offline: true });
-  }
-  return chrome.runtime.sendMessage(message);
-}
-
-function getState() {
-  return send({ type: "getState" }).then((result) => result?.state || null);
-}
-
-function onState(callback) {
-  if (!canUseExtension()) return () => {};
-  const listener = (changes, area) => {
-    if (area === "local" && changes.state) callback(changes.state.newValue);
-  };
-  chrome.storage.onChanged.addListener(listener);
-  getState().then((state) => {
-    if (state) callback(state);
-  });
-  return () => chrome.storage.onChanged.removeListener(listener);
-}
-
-return { canUseExtension, send, getState, onState };
-})();
-modules["shared/sfx.js"] = (() => {
-// Owner: M5 drops the mp3 files in. Anyone may call play().
-// Expected files: assets/sounds/coin.mp3, jingle.mp3, buzz.mp3, boot.mp3, ding.mp3
-// Missing files are ignored so the demo still runs before the audio exists.
-// Play from the page that received the click. A content script cannot rely on
-// audio that was started in the service worker.
-
-const { canUseExtension } = modules["shared/api.js"];
-
-function play(name) {
-  if (!canUseExtension()) return;
-  const audio = new Audio(chrome.runtime.getURL(`assets/sounds/${name}.mp3`));
-  audio.play().catch(() => {});
-}
-
-return { play };
 })();
 modules["overlay/ads.js"] = (() => {
 const { ADS } = modules["overlay/ads-data.js"];
@@ -276,6 +399,7 @@ function showAd() {
 
   skip.addEventListener("click", () => {
     if (skips >= CONFIG.skipCap) {
+      play("buzz");
       note.textContent = "Skip is tired.";
       return;
     }
@@ -351,6 +475,7 @@ function showBrowsingCard() {
 
   skip.addEventListener("click", () => {
     if (skips >= CONFIG.skipCap) {
+      play("buzz");
       note.textContent = "Skip is tired. The ad stays.";
       return;
     }
@@ -500,6 +625,8 @@ function startSound(ad, media) {
 
   if (typeof ad.sound === "string") {
     play(ad.sound);
+  } else {
+    play("jingle");
   }
 }
 
@@ -658,29 +785,183 @@ function sendStat(key) {
 return { mount, unmount };
 })();
 modules["overlay/captcha.js"] = (() => {
-// Owner: M3
-// CAPTCHA chain. Build 4 or more types. Always end by CONFIG.captchaCap (4).
-// When the chain ends, send { type: "captchaDone" }.
-// Count tries with { type: "addStat", key: "captchas" }.
-// Delete the temporary button when the real chain is in.
+const { CONFIG } = modules["shared/config.js"];
+const { send } = modules["shared/api.js"];
+const { play } = modules["shared/sfx.js"];
 
 let root = null;
+let challenges = [];
+let index = 0;
+let completing = false;
+let generation = 0;
 
-function mount(stage) {
-  root = document.createElement("button");
-  root.type = "button";
-  root.className = "shell-temp";
-  root.textContent = "TEMPORARY pass CAPTCHA";
-  root.addEventListener("click", () => {
-    chrome.runtime.sendMessage({ type: "addStat", key: "captchas", amount: 1 });
-    chrome.runtime.sendMessage({ type: "captchaDone" });
-  });
+const CSS = `
+.cap-card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(480px,calc(100vw - 32px)); max-height:calc(100vh - 128px); overflow:auto; box-sizing:border-box; background:#fff; color:#171717; border:3px solid #222; padding:24px; pointer-events:auto; box-shadow:6px 6px 0 #e2b34a; font:16px/1.5 Arial,sans-serif; }
+.cap-card * { box-sizing:border-box; }
+.cap-card h2 { font-size:24px; line-height:1.2; margin:12px 0; }
+.cap-card h2:focus { outline:none; }
+.cap-card p { margin:12px 0; }
+.cap-card .cap-progress { font-size:12px; font-weight:bold; letter-spacing:.08em; }
+.cap-card button { cursor:pointer; padding:10px 14px; min-height:44px; border:2px solid #222; color:#222; background:#fff; font:700 14px Arial,sans-serif; }
+.cap-card button[type=submit], .cap-card .cap-next { background:#222; color:#fff; }
+.cap-card button:disabled { opacity:.65; cursor:wait; }
+.cap-card button:focus-visible, .cap-card input:focus-visible { outline:3px solid #236ac5; outline-offset:3px; }
+.cap-card .cap-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:16px 0; }
+.cap-card .cap-grid button[aria-pressed=true] { background:#ffe8a0; }
+.cap-card label { display:block; margin:12px 0; }
+.cap-card input[type=text] { display:block; width:100%; font:16px Arial,sans-serif; padding:12px; border:1px solid #555; }
+.cap-card .cap-reply { background:#fff4c7; padding:12px; border:1px solid #222; }
+.cap-card [hidden] { display:none!important; }
+`;
+
+function node(tag, text, className) {
+  const element = document.createElement(tag);
+  if (text) element.textContent = text;
+  if (className) element.className = className;
+  return element;
+}
+
+function mount(stage, state = {}) {
+  unmount();
+  const remaining = Math.max(0, (Number(state.endsAt) - Date.now()) / 1000);
+  const count = remaining <= 15 ? 1 : remaining <= 35 ? 2 : 3;
+  const cap = Math.max(1, Math.min(count, Number(CONFIG.captchaCap) || 3));
+  challenges = ["financial", "anger", "human", "speed"];
+  // Shuffle a bounded pool; no challenge can spawn an endless chain.
+  for (let i = challenges.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [challenges[i], challenges[j]] = [challenges[j], challenges[i]];
+  }
+  challenges = challenges.slice(0, cap);
+  index = 0;
+  completing = false;
+  root = node("section", "", "cap-card");
+  root.setAttribute("role", "region");
+  root.setAttribute("aria-label", "Absurd human verification");
   stage.append(root);
+  showChallenge();
+  play("boot");
 }
 
 function unmount() {
+  generation += 1;
   root?.remove();
   root = null;
+  completing = false;
+}
+
+function showChallenge() {
+  if (!root) return;
+  root.replaceChildren();
+  const style = node("style", CSS);
+  const progress = node("p", `HUMAN VERIFICATION ${index + 1} / ${challenges.length}`, "cap-progress");
+  const title = node("h2");
+  title.tabIndex = -1;
+  const form = node("form");
+  const reply = node("p", "", "cap-reply");
+  reply.setAttribute("role", "status");
+  reply.hidden = true;
+  const next = node("button", index === challenges.length - 1 ? "Finally, let me browse" : "Another verification? Fine.", "cap-next");
+  next.type = "button";
+  next.hidden = true;
+  root.append(style, progress, title, form, reply, next);
+  const kind = challenges[index];
+  let response = () => "Verification accepted. Against our better judgment.";
+
+  if (kind === "financial") {
+    title.textContent = "Select everything containing financial stability.";
+    const selected = new Set();
+    const grid = node("div", "", "cap-grid");
+    for (const item of ["Empty wallet", "Rent due", "₱1 coin", "Unpaid bills", "Instant noodles", "A very nice rock"]) {
+      const tile = node("button", item);
+      tile.type = "button";
+      tile.setAttribute("aria-pressed", "false");
+      tile.addEventListener("click", () => {
+        if (selected.has(item)) selected.delete(item); else selected.add(item);
+        tile.setAttribute("aria-pressed", String(selected.has(item)));
+      });
+      grid.append(tile);
+    }
+    const verify = node("button", "None of these / Verify");
+    verify.type = "submit";
+    form.append(node("p", "Select any tiles that qualify, or verify without selecting any."), grid, verify);
+    response = () => selected.size
+      ? "Financial stability not found. We admire your optimism. Accepted anyway."
+      : "Correct. Financial stability is not included in this subscription.";
+  } else if (kind === "anger") {
+    title.textContent = 'Type “I am not angry” to continue.';
+    const label = node("label", "Your very calm response");
+    const input = node("input");
+    input.type = "text";
+    input.required = true;
+    input.maxLength = 80;
+    input.autocomplete = "off";
+    label.append(input);
+    const verify = node("button", "Verify my patience");
+    verify.type = "submit";
+    form.append(label, verify);
+    response = () => input.value.trim().toLowerCase() === "i am not angry"
+      ? "Your typing suggests otherwise. Accepted anyway."
+      : "That sounds angry too. Accepted to prevent further damage.";
+  } else {
+    title.textContent = kind === "human" ? "Prove you are human." : "Which connection is the fastest?";
+    const choices = kind === "human" ? ["Yes", "Probably", "Ask my mother"] : ["Dial-up", "Carrier pigeon", "My imagination"];
+    let choice = choices[0];
+    choices.forEach((text, i) => {
+      const label = node("label");
+      const input = node("input");
+      input.type = "radio";
+      input.name = "cap-choice";
+      input.checked = i === 0;
+      input.addEventListener("change", () => { choice = text; });
+      label.append(input, document.createTextNode(` ${text}`));
+      form.append(label);
+    });
+    const verify = node("button", "Submit extremely scientific evidence");
+    verify.type = "submit";
+    form.append(verify);
+    response = () => kind === "human"
+      ? `“${choice}” is exactly what a human would say. Suspicious. Approved.`
+      : `“${choice}” is faster than our internet. Approved.`;
+  }
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const submit = form.querySelector("button[type=submit]");
+    if (submit.disabled || !form.reportValidity()) return;
+    submit.disabled = true;
+    reply.textContent = response();
+    reply.hidden = false;
+    next.hidden = false;
+    form.querySelectorAll("input, button").forEach(control => { control.disabled = true; });
+    play("buzz");
+    try { await send({ type: "addStat", key: "captchas", amount: 1 }); } catch { /* Continue button can still retry the session. */ }
+    if (root?.contains(next)) next.focus();
+  });
+
+  next.addEventListener("click", async () => {
+    if (completing) return;
+    if (index < challenges.length - 1) {
+      index += 1;
+      showChallenge();
+      return;
+    }
+    completing = true;
+    play("ding");
+    next.disabled = true;
+    const token = generation;
+    try {
+      const result = await send({ type: "captchaDone" });
+      if (token !== generation || !root) return;
+      if (!result?.ok) throw new Error(result?.error || "Connection hiccup. Try that button again.");
+    } catch (err) {
+      if (token !== generation || !root) return;
+      completing = false;
+      next.disabled = false;
+      reply.textContent = err.message;
+    }
+  });
+  title.focus();
 }
 
 return { mount, unmount };
@@ -770,7 +1051,7 @@ modules["overlay/loading.js"] = (() => {
 // CONFIG.disconnectCap (2). Stat key: "disconnects".
 // When the real load has survived your cap, send:
 // { type: "pageLoaded", url: location.href }
-// That opens the finale page. Delete the temporary button when the bar is real.
+// Browsing now continues until the session timer expires.
 
 let root = null;
 
@@ -780,6 +1061,8 @@ function mount(stage) {
   root.className = "shell-temp";
   root.textContent = "TEMPORARY page loaded";
   root.addEventListener("click", () => {
+    root.textContent = "Page loaded. Enjoy your remaining time.";
+    root.disabled = true;
     chrome.runtime.sendMessage({ type: "pageLoaded", url: location.href });
   });
   stage.append(root);
@@ -956,6 +1239,7 @@ function unmount() {
 return { mount, unmount };
 })();
 modules["overlay/overlay.js"] = (() => {
+const { mountSoundControl } = modules["shared/sfx.js"];
 // Owner: M1
 // Shadow-DOM shell. This is the only file that calls mount() / unmount().
 // M2–M5: do not edit this file. Send messages to background.js instead.
@@ -1025,6 +1309,7 @@ function boot() {
   time.textContent = "00:00:00";
   time.setAttribute("aria-label", "Time left. Opens session tools.");
   bar.append(time);
+  mountSoundControl(bar);
   const toast = document.createElement("div");
   toast.className = "hud-toast";
   toast.hidden = true;
@@ -1063,12 +1348,19 @@ function boot() {
   const stage = document.createElement("div");
   stage.className = "shell-stage";
   // Stage first, frame and timer after, so the bamboo stays above ads and obstacles.
-  root.append(stage, frame, bar, toast, panel);
+  const wallNote = document.createElement("div");
+  wallNote.className = "wall-note";
+  wallNote.setAttribute("role", "status");
+  wallNote.hidden = true;
+  root.append(stage, frame, bar, toast, panel, wallNote);
   shadow.append(root);
 
   let active = [];
   let signature = "";
   let toastTimer = 0;
+  let wallTimer = 0;
+  let wallSession = 0;
+  let wallMilestone = -1;
 
   time.addEventListener("click", () => {
     panel.hidden = !panel.hidden;
@@ -1155,17 +1447,51 @@ function boot() {
     const thin = 8;
     let progress = 0;
     if (["captcha", "browsing"].includes(state.phase) && state.endsAt) {
-      // Grow after the paid ads period, reaching the maximum at 10s left.
-      const start = Number(state.adsUntil) || Date.now();
-      const finish = Number(state.endsAt) - 10000;
-      progress = finish <= start
-        ? 1
-        : Math.max(0, Math.min(1, (Date.now() - start) / (finish - start)));
+      // Use the whole remaining session, rather than filling up at 10s left.
+      // More purchased time spreads the same growth over a longer interval.
+      const start = Number(state.adsUntil) || Number(state.endsAt);
+      const duration = Math.max(1, Number(state.endsAt) - start);
+      progress = Math.max(0, Math.min(1, (Date.now() - start) / duration));
     }
-    const horizontal = thin + Math.max(0, window.innerWidth * 0.44 - thin) * progress;
-    const vertical = thin + Math.max(0, window.innerHeight * 0.44 - thin) * progress;
+
+    // Ease in and out so both the first and final seconds grow gently.
+    const eased = progress * progress * (3 - 2 * progress);
+    // Keep most of the webpage visible, even at maximum thickness.
+    const maxHorizontal = Math.max(thin, Math.min(96, window.innerWidth * 0.10));
+    const maxVertical = Math.max(thin, Math.min(48, window.innerHeight * 0.08));
+    const horizontal = thin + (maxHorizontal - thin) * eased;
+    const vertical = thin + (maxVertical - thin) * eased;
     frame.style.setProperty("--frame-x", `${horizontal}px`);
     frame.style.setProperty("--frame-y", `${vertical}px`);
+    wallNote.style.bottom = `${vertical + 12}px`;
+    wallNote.style.maxWidth = `${Math.min(360, Math.max(120, window.innerWidth - horizontal * 2 - 24))}px`;
+    paintWallMessage(state, progress);
+  }
+
+  function paintWallMessage(state, progress) {
+    if (wallSession !== state.endsAt) {
+      wallSession = state.endsAt;
+      wallMilestone = -1;
+      clearTimeout(wallTimer);
+      wallNote.hidden = true;
+    }
+    if (state.phase !== "browsing") {
+      wallNote.hidden = true;
+      clearTimeout(wallTimer);
+      return;
+    }
+    const milestone = Math.min(2, Math.floor(progress * 3));
+    if (milestone <= wallMilestone) return;
+    wallMilestone = milestone;
+    const messages = [
+      "Your browsing space is shrinking because your peso is depreciating.",
+      "Premium wall successfully installed. Internet sold separately.",
+      "Your browsing space is now a limited edition."
+    ];
+    wallNote.textContent = messages[milestone];
+    wallNote.hidden = false;
+    clearTimeout(wallTimer);
+    wallTimer = setTimeout(() => { wallNote.hidden = true; }, 4000);
   }
 
   function showToast(text) {
@@ -1178,7 +1504,7 @@ function boot() {
   }
 }
 
-function loadCss(style) { style.textContent = "/* Owner: M1. Bamboo frame, timer plaque, and the hidden session tools. */\r\n\r\n.shell-root {\r\n  position: fixed;\r\n  inset: 0;\r\n  pointer-events: none;\r\n  font-family: \"Segoe UI\", system-ui, sans-serif;\r\n}\r\n\r\n.shell-stage {\r\n  position: absolute;\r\n  inset: 0;\r\n  z-index: 1;\r\n  pointer-events: none;\r\n}\r\n\r\n.bamboo-frame {\r\n  position: absolute;\r\n  inset: 0;\r\n  z-index: 4;\r\n  pointer-events: none;\r\n}\r\n\r\n.bamboo-frame[hidden] {\r\n  display: none;\r\n}\r\n\r\n.bamboo-rail {\r\n  position: absolute;\r\n  pointer-events: auto;\r\n  background-color: #e2b34a;\r\n}\r\n\r\n.bamboo-top,\r\n.bamboo-bottom {\r\n  left: 0;\r\n  right: 0;\r\n  height: var(--frame-y, 8px);\r\n  background-image:\r\n    linear-gradient(180deg, rgba(255, 248, 220, 0.55), rgba(255, 255, 255, 0) 42%, rgba(80, 42, 8, 0.28)),\r\n    repeating-linear-gradient(\r\n      90deg,\r\n      #f3d78a 0 18px,\r\n      #e0b04a 18px 70px,\r\n      #c4892c 70px 78px,\r\n      #8a5a18 78px 86px,\r\n      #f6e7b0 86px 92px,\r\n      #e0b04a 92px 140px\r\n    );\r\n  box-shadow: inset 0 0 0 3px #7a4e12;\r\n}\r\n\r\n.bamboo-top {\r\n  top: 0;\r\n  box-shadow: inset 0 0 0 3px #7a4e12, 0 5px 0 rgba(0, 0, 0, 0.22);\r\n}\r\n\r\n.bamboo-bottom {\r\n  bottom: 0;\r\n  box-shadow: inset 0 0 0 3px #7a4e12, 0 -5px 0 rgba(0, 0, 0, 0.22);\r\n}\r\n\r\n.bamboo-left,\r\n.bamboo-right {\r\n  top: 0;\r\n  bottom: 0;\r\n  width: var(--frame-x, 8px);\r\n  z-index: 2;\r\n  background-image:\r\n    linear-gradient(90deg, rgba(80, 42, 8, 0.3), rgba(255, 248, 220, 0.45) 38%, rgba(255, 255, 255, 0) 62%, rgba(80, 42, 8, 0.28)),\r\n    repeating-linear-gradient(\r\n      180deg,\r\n      #f3d78a 0 16px,\r\n      #e0b04a 16px 64px,\r\n      #c4892c 64px 72px,\r\n      #8a5a18 72px 80px,\r\n      #f6e7b0 80px 86px,\r\n      #e0b04a 86px 132px\r\n    );\r\n  box-shadow: inset 0 0 0 3px #7a4e12;\r\n}\r\n\r\n.bamboo-left {\r\n  left: 0;\r\n  box-shadow: inset 0 0 0 3px #7a4e12, 5px 0 0 rgba(0, 0, 0, 0.18);\r\n}\r\n\r\n.bamboo-right {\r\n  right: 0;\r\n  box-shadow: inset 0 0 0 3px #7a4e12, -5px 0 0 rgba(0, 0, 0, 0.18);\r\n}\r\n\r\n.hud-bar {\r\n  position: absolute;\r\n  top: 0;\r\n  right: 6px;\r\n  z-index: 6;\r\n  pointer-events: none;\r\n}\r\n\r\n.hud-time {\r\n  pointer-events: auto;\r\n  cursor: pointer;\r\n  min-width: 196px;\r\n  border: 8px solid #e2b34a;\r\n  background:\r\n    linear-gradient(180deg, #c9842a, #8f5614);\r\n  color: #fff;\r\n  font: 700 34px/1 Consolas, \"Courier New\", ui-monospace, monospace;\r\n  font-variant-numeric: tabular-nums;\r\n  letter-spacing: 1px;\r\n  padding: 8px 16px 10px;\r\n  text-shadow: 0 2px 0 #3f2508;\r\n  box-shadow:\r\n    inset 0 0 0 3px #7a4e12,\r\n    0 4px 0 #6a430c;\r\n}\r\n\r\n.hud-toast {\r\n  position: absolute;\r\n  top: 70px;\r\n  right: 16px;\r\n  z-index: 6;\r\n  pointer-events: none;\r\n  background: #111;\r\n  color: #ffe14a;\r\n  border: 3px solid #ffe14a;\r\n  padding: 8px 12px;\r\n  font: 700 14px/1.3 system-ui, sans-serif;\r\n}\r\n\r\n.god-panel {\r\n  position: absolute;\r\n  top: 70px;\r\n  right: 16px;\r\n  z-index: 7;\r\n  width: 220px;\r\n  pointer-events: auto;\r\n  background: #111;\r\n  color: #ffe14a;\r\n  border: 3px solid #ffe14a;\r\n  padding: 10px;\r\n  display: grid;\r\n  gap: 6px;\r\n  font: 12px/1.3 system-ui, sans-serif;\r\n}\r\n\r\n.god-panel[hidden] {\r\n  display: none;\r\n}\r\n\r\n.god-panel button,\r\n.god-panel input {\r\n  font: inherit;\r\n  padding: 4px 6px;\r\n}\r\n\r\n.shell-temp {\r\n  position: absolute;\r\n  left: 16px;\r\n  bottom: 16px;\r\n  pointer-events: auto;\r\n  z-index: 2;\r\n  border: 3px solid #111;\r\n  background: #fff;\r\n  color: #111;\r\n  font: 700 14px/1 system-ui, sans-serif;\r\n  padding: 10px 12px;\r\n  cursor: pointer;\r\n}\r\n\r\n/* Grow the page frame smoothly between one-second timer updates. */\r\n.bamboo-rail {\r\n  transition: width 950ms linear, height 950ms linear;\r\n}\r\n\r\n/* Keep the existing CAPTCHA placeholder visible and clickable. */\r\n.shell-stage[data-phase=\"captcha\"] {\r\n  z-index: 5;\r\n}\r\n\r\n.shell-stage[data-phase=\"captcha\"] .shell-temp {\r\n  left: 50%;\r\n  top: 50%;\r\n  bottom: auto;\r\n  transform: translate(-50%, -50%);\r\n  max-width: calc(100vw - 32px);\r\n  padding: 18px 24px;\r\n  font-size: 18px;\r\n  line-height: 1.3;\r\n  text-align: center;\r\n}\r\n\r\n@media (prefers-reduced-motion: reduce) {\r\n  .bamboo-rail {\r\n    transition: none;\r\n  }\r\n}\r\n\n/* The ads card is mounted on the page, outside the shadow root, because a\r\n   card inside the shadow host can fail to paint. ads.js sets the live styles\r\n   inline so a site content policy cannot strip them. These rules match that\r\n   card if it is ever moved back into the shadow. */\r\n\r\n.ads-root {\r\n  position: fixed;\r\n  inset: 0;\r\n  pointer-events: none;\r\n}\r\n\r\n.ads-card {\r\n  position: fixed;\r\n  overflow: hidden;\r\n  pointer-events: auto;\r\n  background: #111;\r\n  color: #fff;\r\n  border: 6px solid #111;\r\n  box-shadow: 8px 8px 0 #c81e1e;\r\n  font-family: \"Segoe UI\", sans-serif;\r\n}\r\n\r\n.ads-media {\r\n  display: block;\r\n  width: 100%;\r\n  height: 100%;\r\n  object-fit: cover;\r\n  background: #111;\r\n}\r\n\r\n.ads-x {\r\n  position: absolute;\r\n  z-index: 2;\r\n  width: 36px;\r\n  height: 36px;\r\n  border: 3px solid #111;\r\n  background: #fff;\r\n  color: #111;\r\n  font-weight: 900;\r\n  line-height: 1;\r\n  cursor: pointer;\r\n}\r\n\r\n.ads-dock {\r\n  position: absolute;\r\n  left: 0;\r\n  right: 0;\r\n  bottom: 0;\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 8px;\r\n  padding: 12px;\r\n  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));\r\n}\r\n\r\n.ads-row {\r\n  display: flex;\r\n  gap: 8px;\r\n}\r\n\r\n.ads-row button {\r\n  border: 3px solid #111;\r\n  background: #ffe14a;\r\n  color: #111;\r\n  font-weight: 800;\r\n  padding: 8px 12px;\r\n  cursor: pointer;\r\n}\r\n\r\n.ads-note {\r\n  min-height: 1.2em;\r\n  margin: 0;\r\n  color: #fff;\r\n  font-size: 14px;\r\n  font-weight: 800;\r\n  text-shadow: 0 1px 0 #111;\r\n}\r\n\n/* Owner: M5. Suffering concierge card. Prefix classes with pop-. */\r\n\r\n.pop-root {\r\n  pointer-events: auto;\r\n}\r\n"; }
+function loadCss(style) { style.textContent = "/* Owner: M1. Bamboo frame, timer plaque, and the hidden session tools. */\n\n.shell-root {\n  position: fixed;\n  inset: 0;\n  pointer-events: none;\n  font-family: \"Segoe UI\", system-ui, sans-serif;\n}\n\n.shell-stage {\n  position: absolute;\n  inset: 0;\n  z-index: 1;\n  pointer-events: none;\n}\n\n.bamboo-frame {\n  position: absolute;\n  inset: 0;\n  z-index: 4;\n  pointer-events: none;\n}\n\n.bamboo-frame[hidden] {\n  display: none;\n}\n\n.bamboo-rail {\n  position: absolute;\n  pointer-events: auto;\n  background-color: #e2b34a;\n}\n\n.bamboo-top,\n.bamboo-bottom {\n  left: 0;\n  right: 0;\n  height: var(--frame-y, 8px);\n  background-image:\n    linear-gradient(180deg, rgba(255, 248, 220, 0.55), rgba(255, 255, 255, 0) 42%, rgba(80, 42, 8, 0.28)),\n    repeating-linear-gradient(\n      90deg,\n      #f3d78a 0 18px,\n      #e0b04a 18px 70px,\n      #c4892c 70px 78px,\n      #8a5a18 78px 86px,\n      #f6e7b0 86px 92px,\n      #e0b04a 92px 140px\n    );\n  box-shadow: inset 0 0 0 3px #7a4e12;\n}\n\n.bamboo-top {\n  top: 0;\n  box-shadow: inset 0 0 0 3px #7a4e12, 0 5px 0 rgba(0, 0, 0, 0.22);\n}\n\n.bamboo-bottom {\n  bottom: 0;\n  box-shadow: inset 0 0 0 3px #7a4e12, 0 -5px 0 rgba(0, 0, 0, 0.22);\n}\n\n.bamboo-left,\n.bamboo-right {\n  top: 0;\n  bottom: 0;\n  width: var(--frame-x, 8px);\n  z-index: 2;\n  background-image:\n    linear-gradient(90deg, rgba(80, 42, 8, 0.3), rgba(255, 248, 220, 0.45) 38%, rgba(255, 255, 255, 0) 62%, rgba(80, 42, 8, 0.28)),\n    repeating-linear-gradient(\n      180deg,\n      #f3d78a 0 16px,\n      #e0b04a 16px 64px,\n      #c4892c 64px 72px,\n      #8a5a18 72px 80px,\n      #f6e7b0 80px 86px,\n      #e0b04a 86px 132px\n    );\n  box-shadow: inset 0 0 0 3px #7a4e12;\n}\n\n.bamboo-left {\n  left: 0;\n  box-shadow: inset 0 0 0 3px #7a4e12, 5px 0 0 rgba(0, 0, 0, 0.18);\n}\n\n.bamboo-right {\n  right: 0;\n  box-shadow: inset 0 0 0 3px #7a4e12, -5px 0 0 rgba(0, 0, 0, 0.18);\n}\n\n.hud-bar {\n  position: absolute;\n  top: 0;\n  right: 6px;\n  z-index: 6;\n  pointer-events: none;\n}\n\n.hud-time {\n  pointer-events: auto;\n  cursor: pointer;\n  min-width: 196px;\n  border: 8px solid #e2b34a;\n  background:\n    linear-gradient(180deg, #c9842a, #8f5614);\n  color: #fff;\n  font: 700 34px/1 Consolas, \"Courier New\", ui-monospace, monospace;\n  font-variant-numeric: tabular-nums;\n  letter-spacing: 1px;\n  padding: 8px 16px 10px;\n  text-shadow: 0 2px 0 #3f2508;\n  box-shadow:\n    inset 0 0 0 3px #7a4e12,\n    0 4px 0 #6a430c;\n}\n\n.hud-toast {\n  position: absolute;\n  top: 70px;\n  right: 16px;\n  z-index: 6;\n  pointer-events: none;\n  background: #111;\n  color: #ffe14a;\n  border: 3px solid #ffe14a;\n  padding: 8px 12px;\n  font: 700 14px/1.3 system-ui, sans-serif;\n}\n\n.god-panel {\n  position: absolute;\n  top: 70px;\n  right: 16px;\n  z-index: 7;\n  width: 220px;\n  pointer-events: auto;\n  background: #111;\n  color: #ffe14a;\n  border: 3px solid #ffe14a;\n  padding: 10px;\n  display: grid;\n  gap: 6px;\n  font: 12px/1.3 system-ui, sans-serif;\n}\n\n.god-panel[hidden] {\n  display: none;\n}\n\n.god-panel button,\n.god-panel input {\n  font: inherit;\n  padding: 4px 6px;\n}\n\n.shell-temp {\n  position: absolute;\n  left: 16px;\n  bottom: 16px;\n  pointer-events: auto;\n  z-index: 2;\n  border: 3px solid #111;\n  background: #fff;\n  color: #111;\n  font: 700 14px/1 system-ui, sans-serif;\n  padding: 10px 12px;\n  cursor: pointer;\n}\n\n/* Grow the page frame smoothly between one-second timer updates. */\n.bamboo-rail {\n  transition: width 950ms linear, height 950ms linear;\n}\n\n/* Keep the existing CAPTCHA placeholder visible and clickable. */\n.shell-stage[data-phase=\"captcha\"] {\n  z-index: 5;\n}\n\n.shell-stage[data-phase=\"captcha\"] .shell-temp {\n  left: 50%;\n  top: 50%;\n  bottom: auto;\n  transform: translate(-50%, -50%);\n  max-width: calc(100vw - 32px);\n  padding: 18px 24px;\n  font-size: 18px;\n  line-height: 1.3;\n  text-align: center;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .bamboo-rail {\n    transition: none;\n  }\n}\n\n.hud-bar { display: flex; align-items: flex-start; gap: 8px; }\n.hud-bar[hidden] { display: none; }\n.wall-note { position: absolute; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; background: #fff9da; color: #222; border: 2px solid #222; padding: 10px 14px; font: 700 13px/1.4 Arial, sans-serif; text-align: center; box-sizing: border-box; }\n.wall-note[hidden] { display: none; }\n@media (max-width: 480px) { .hud-bar { gap: 3px; } .hud-time { min-width: 0; font-size: 22px; padding: 8px; border-width: 4px; } }\n\n/* The ads card is mounted on the page, outside the shadow root, because a\n   card inside the shadow host can fail to paint. ads.js sets the live styles\n   inline so a site content policy cannot strip them. These rules match that\n   card if it is ever moved back into the shadow. */\n\n.ads-root {\n  position: fixed;\n  inset: 0;\n  pointer-events: none;\n}\n\n.ads-card {\n  position: fixed;\n  overflow: hidden;\n  pointer-events: auto;\n  background: #111;\n  color: #fff;\n  border: 6px solid #111;\n  box-shadow: 8px 8px 0 #c81e1e;\n  font-family: \"Segoe UI\", sans-serif;\n}\n\n.ads-media {\n  display: block;\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n  background: #111;\n}\n\n.ads-x {\n  position: absolute;\n  z-index: 2;\n  width: 36px;\n  height: 36px;\n  border: 3px solid #111;\n  background: #fff;\n  color: #111;\n  font-weight: 900;\n  line-height: 1;\n  cursor: pointer;\n}\n\n.ads-dock {\n  position: absolute;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 12px;\n  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));\n}\n\n.ads-row {\n  display: flex;\n  gap: 8px;\n}\n\n.ads-row button {\n  border: 3px solid #111;\n  background: #ffe14a;\n  color: #111;\n  font-weight: 800;\n  padding: 8px 12px;\n  cursor: pointer;\n}\n\n.ads-note {\n  min-height: 1.2em;\n  margin: 0;\n  color: #fff;\n  font-size: 14px;\n  font-weight: 800;\n  text-shadow: 0 1px 0 #111;\n}\n\n/* Owner: M5. Suffering concierge card. Prefix classes with pop-. */\n\n.pop-root {\n  pointer-events: auto;\n}\n"; }
 
 return {  };
 })();

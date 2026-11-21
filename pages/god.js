@@ -2,6 +2,7 @@
 // The digits are the real session tools. The red GOD MODE button is a decoy.
 // Overlay has its own copy for real web pages. Extension pages use this one.
 
+import { mountSoundControl } from "../shared/sfx.js";
 import { CONFIG } from "../shared/config.js";
 import { send, onState, canUseExtension } from "../shared/api.js";
 
@@ -19,6 +20,8 @@ export function mountPageTools(parent) {
       <button type="button" data-god="reset">Reset demo</button>
     </div>
   `;
+
+  mountSoundControl(parent);
 
   const time = parent.querySelector(".hud-time");
   const panel = parent.querySelector(".god-panel");

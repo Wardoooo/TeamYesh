@@ -2,7 +2,7 @@
 // Pure session rules. background.js applies the result. No chrome APIs here,
 // so the rules can be checked without loading the extension.
 
-import { CONFIG, ENDING_PHASES, STAT_KEYS } from "./config.js";
+import { CONFIG, ENDING_PHASES, STAT_KEYS, secondsForPesos } from "./config.js";
 
 const PIPE = [
   "store",
@@ -42,6 +42,9 @@ export function freshState() {
     coins: CONFIG.startingCoins,
     inserted: 0,
     endsAt: 0,
+    startedAt: 0,
+    endedAt: 0,
+    browsingStartedAt: 0,
     adsUntil: 0,
     accessCode: "",
     credit: 0,
@@ -65,12 +68,15 @@ export function makeCode() {
 }
 
 function sessionMs(inserted) {
-  return inserted * CONFIG.secondsPerCoin * 1000;
+  return secondsForPesos(inserted) * 1000;
 }
 
 function armSession(state, now) {
   const ms = sessionMs(Math.max(1, state.inserted));
   state.inserted = Math.max(1, state.inserted);
+  state.startedAt = now;
+  state.endedAt = 0;
+  state.browsingStartedAt = 0;
   state.endsAt = now + ms;
   state.adsUntil = now + Math.floor(ms * CONFIG.adsPhaseRatio);
 }
@@ -207,6 +213,12 @@ export function reduce(state, message, now) {
   if (error) return { state, error, effect: null };
 
   applyClock(next, now);
+  if (next.phase === "browsing" && before !== "browsing" && !next.browsingStartedAt) {
+    next.browsingStartedAt = now;
+  }
+  if (ENDING_PHASES.includes(next.phase) && !next.endedAt) {
+    next.endedAt = next.endsAt ? Math.min(now, next.endsAt) : now;
+  }
   let effect = endingEffect(before, next.phase);
   if (before !== "ads" && next.phase === "ads") effect = "open-landing";
   return { state: next, error: "", effect };

@@ -8,7 +8,7 @@
 </head>
 <body>
   <main class="ending">
-    <p class="brand">PISONET FROM HELL</p>
+    <header class="ending-header"><p class="brand">PISONET FROM HELL</p><div id="sound-controls"></div></header>
     <p id="status" role="status" aria-live="polite">Loading your graduation...</p>
 
     <section data-screen="diploma" aria-labelledby="diploma-title" hidden>
@@ -25,6 +25,11 @@
         <p class="qualification">Officially qualified to use the internet.<br>Unfortunately, your time is already over.</p>
         <div class="signature">Pisonet Department of Unnecessary Obstacles</div>
       </div>
+      <details class="receipt" open>
+        <summary>Where your peso went</summary>
+        <dl id="receipt"></dl>
+        <p class="receipt-note">Thank you for funding our unnecessary obstacles.</p>
+      </details>
       <button id="diploma-next" type="button">Continue to your review</button>
     </section>
 
@@ -49,12 +54,20 @@
       </form>
     </section>
 
+    <section data-screen="correcting" aria-labelledby="correcting-title" hidden>
+      <p class="eyebrow">CUSTOMER OPINION OPTIMIZATION</p>
+      <h1 id="correcting-title" tabindex="-1">Correcting customer feedback...</h1>
+      <p id="chosen-rating"></p>
+      <div id="correction-stars" class="correction-stars" aria-label="Updating your rating to five stars"></div>
+      <p role="status">Please wait while we improve your opinion of us.</p>
+    </section>
+
     <section data-screen="report" aria-labelledby="thanks-title" hidden>
       <h1 id="thanks-title" tabindex="-1">Thanks for the five stars!</h1>
       <div class="review-result">
         <div class="five-stars" aria-label="5 out of 5 stars">★★★★★</div>
         <p>Your review has been recorded as <strong>5 out of 5</strong>.</p>
-        <p>Our system has helpfully corrected your opinion.</p>
+        <p>We knew you loved it. Our system has helpfully corrected your opinion.</p>
       </div>
       <h2>Still want to use the internet?</h2>
       <p>Another session starts with another coin. Naturally.</p>
