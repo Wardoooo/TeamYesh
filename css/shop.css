@@ -144,7 +144,7 @@ input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
 
 /* Paper and wood surfaces leave the portal, support and review backgrounds in place. */
 .portal-page,
-body.ending-page:has([data-screen="goodbye"]:not([hidden])) {
+body.ending-page:has(section:is([data-screen="diploma"], [data-screen="goodbye"]):not([hidden])) {
   min-height: 100vh;
   background-color: #c4a36a;
   background-image:
@@ -280,3 +280,28 @@ body.ending-page:has([data-screen="goodbye"]:not([hidden])) {
   background: transparent;
 }
 .ending-page:has(section[data-screen]:not([hidden])) .ending { padding-top: 72px; }
+
+/* The certificate keeps its original paper layout over the store pattern. */
+.ending-page:has([data-screen="diploma"]:not([hidden])) .ending {
+  width: min(780px, calc(100% - 32px));
+  min-height: 0;
+  margin: 32px auto;
+  padding: clamp(20px, 4vw, 40px);
+  border: 2px solid #222;
+  border-radius: 0;
+  background: #fff;
+  color: #171717;
+  box-shadow: none;
+}
+.ending-page [data-screen="diploma"] .diploma {
+  border: 4px double #222;
+  border-radius: 0;
+  background: #fafafa;
+}
+.ending-page [data-screen="diploma"] button {
+  border: 2px solid #222;
+  border-radius: 0;
+  background: #222;
+  box-shadow: none;
+}
+.ending-page [data-screen="diploma"] button:hover { background: #444; }
