@@ -54,14 +54,17 @@ h1[tabindex="-1"]:focus { outline: none; }
 .ending-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
 .ending-header .brand { margin: 8px 0; }
 .receipt-paper {
+  position: relative;
+  overflow: hidden;
   width: min(720px, 100%);
   min-height: 960px;
   margin: 0 auto 24px;
   padding: 90px clamp(54px, 10vw, 100px) 100px;
-  background: url("../assets/img/receipt.png") center / 100% 100% no-repeat;
+  border-radius: 28px;
+  background: url("../assets/img/Skeleton%20(11).png") center / cover no-repeat;
   text-align: center;
 }
-.receipt-paper .diploma { margin: 18px 0; padding: 0; border: 0; background: transparent; }
+.ending-page .receipt-paper .diploma { margin: 18px 0; padding: clamp(16px, 3vw, 28px); border: 2px solid #fff; border-radius: 13px; background: #fff; }
 .receipt-paper .diploma h2 { font-size: clamp(22px, 4vw, 30px); }
 .receipt-paper .graduate { margin: 10px 0; font-size: 30px; }
 .receipt-paper .signature { margin-top: 14px; padding-top: 8px; }
