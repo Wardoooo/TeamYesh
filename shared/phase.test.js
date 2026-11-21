@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { secondsForPesos } from "./config.js";
 import { freshState, makeCode, reduce } from "./phase.js";
+import { receiptRows } from "./receipt.js";
 
 assert.equal(secondsForPesos(1), 60);
 assert.equal(secondsForPesos(4), 240);
@@ -41,6 +42,7 @@ assert.equal(started.effect, "open-landing");
 state = started.state;
 assert.equal(state.phase, "ads");
 assert.equal(state.endsAt, now + 120_000);
+assert.equal(state.startedAt, now);
 assert.equal(state.adsUntil, now + 60_000);
 
 state = reduce(state, { type: "tickCheck" }, now + 60_000).state;
@@ -48,6 +50,7 @@ assert.equal(state.phase, "captcha");
 
 state = reduce(state, { type: "captchaDone" }, now + 61_000).state;
 assert.equal(state.phase, "browsing");
+assert.equal(state.browsingStartedAt, now + 61_000);
 
 const loaded = reduce(state, { type: "pageLoaded", url: "https://www.google.com" }, now + 70_000);
 assert.equal(loaded.state.phase, "browsing");
@@ -56,6 +59,11 @@ state = loaded.state;
 
 const expired = reduce(state, { type: "tickCheck" }, now + 120_000);
 assert.equal(expired.state.phase, "expired");
+assert.equal(expired.state.endedAt, now + 120_000);
+const receipt = Object.fromEntries(receiptRows(expired.state));
+assert.equal(receipt["Internet time purchased"], "120 seconds");
+assert.equal(receipt["Time spent on obstacles"], "61 seconds");
+assert.equal(receipt["Browsing time unlocked"], "59 seconds");
 assert.equal(expired.effect, "show-ending");
 state = expired.state;
 
@@ -79,6 +87,8 @@ assert.equal(armed.state.phase, "ads");
 const hit = reduce(armed.state, { type: "expireNow" }, now + 1000);
 assert.equal(hit.state.phase, "expired");
 assert.equal(hit.effect, "show-ending");
+assert.equal(hit.state.endedAt, now + 1000);
+assert.equal(Object.fromEntries(receiptRows(hit.state))["Time spent on obstacles"], "1 second");
 const denied = reduce(freshState(), { type: "expireNow" }, now);
 assert.equal(denied.error, "The exit only works during an ad.");
 assert.equal(denied.state.phase, "store");
@@ -117,6 +127,9 @@ for (let stars = 1; stars <= 5; stars += 1) {
   assert.equal(restarted.state.inserted, 0);
   assert.equal(restarted.state.endsAt, 0);
   assert.equal(restarted.state.adsUntil, 0);
+  assert.equal(restarted.state.startedAt, 0);
+  assert.equal(restarted.state.endedAt, 0);
+  assert.equal(restarted.state.browsingStartedAt, 0);
   assert.equal(restarted.state.rating, 0);
   assert.equal(restarted.state.review, "");
   assert.equal(restarted.state.accessCode.length, 6);

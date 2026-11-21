@@ -196,3 +196,9 @@
     transition: none;
   }
 }
+
+.hud-bar { display: flex; align-items: flex-start; gap: 8px; }
+.hud-bar[hidden] { display: none; }
+.wall-note { position: absolute; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; background: #fff9da; color: #222; border: 2px solid #222; padding: 10px 14px; font: 700 13px/1.4 Arial, sans-serif; text-align: center; box-sizing: border-box; }
+.wall-note[hidden] { display: none; }
+@media (max-width: 480px) { .hud-bar { gap: 3px; } .hud-time { min-width: 0; font-size: 22px; padding: 8px; border-width: 4px; } }
