@@ -18,6 +18,9 @@ const PIPE = [
 ];
 
 const LIVE = ["ads", "captcha", "browsing", "finale"];
+const BRIGHTNESS_PHASES = ["ads", "captcha", "browsing"];
+const BRIGHTNESS_DROP_INTERVAL_MS = 1000;
+const BRIGHTNESS_DROP_PER_INTERVAL = 2;
 
 export function emptyStats() {
   return {
@@ -43,8 +46,11 @@ export function freshState() {
     accessCode: "",
     credit: 0,
     brightness: 1,
+    brightnessTickAt: null,
     clearToken: 0,
     rating: 0,
+    review: "",
+    sessionTabId: 0,
     stats: emptyStats()
   };
 }
@@ -129,7 +135,7 @@ export function reduce(state, message, now) {
 
   if (type === "captchaDone" && next.phase === "captcha") next.phase = "browsing";
 
-  if (type === "pageLoaded" && next.phase === "browsing") next.phase = "finale";
+  // Loading a webpage does not end the paid session. Expiry opens the diploma.
 
   if (type === "addCredit") {
     const amount = Math.floor(Number(message.amount));
@@ -142,6 +148,26 @@ export function reduce(state, message, now) {
     }
   }
 
+  if (BRIGHTNESS_PHASES.includes(next.phase) && now < next.endsAt) {
+    const brightness = next.brightness ?? 1;
+
+    if (brightness > 1) {
+      const lastTick = next.brightnessTickAt ?? now;
+      const elapsed = Math.max(0, Math.floor((now - lastTick) / BRIGHTNESS_DROP_INTERVAL_MS));
+
+      next.brightness = Math.max(1, brightness - elapsed * BRIGHTNESS_DROP_PER_INTERVAL);
+      next.brightnessTickAt = lastTick + elapsed * BRIGHTNESS_DROP_INTERVAL_MS;
+    }
+
+    if (type === "increaseBrightness" && (next.brightness ?? 1) < 100) {
+      const current = next.brightness ?? 1;
+
+      if (current === 1) next.brightnessTickAt = now;
+      next.brightness = current + 1;
+      next.stats.brightnessTaps = (next.stats.brightnessTaps ?? 0) + 1;
+    }
+  }
+
   if (type === "addStat") {
     const key = message.key;
     const amount = Number(message.amount);
@@ -150,16 +176,30 @@ export function reduce(state, message, now) {
   }
 
   if (type === "continueEnding") {
-    if (next.phase === "expired") next.phase = "survey";
+    if (["expired", "finale"].includes(next.phase)) next.phase = "survey";
     else if (next.phase === "survey") next.phase = "report";
   }
 
   if (type === "rate") {
-    const stars = Number(message.stars);
-    next.stats.attemptedStars = Number.isFinite(stars) ? stars : 5;
-    next.stats.forcedStars = 5;
-    next.rating = 5;
-    if (next.phase === "survey") next.phase = "report";
+    if (next.phase !== "survey") {
+      error = "Open the review screen first.";
+    } else {
+      const stars = Number(message.stars);
+      next.stats.attemptedStars = Number.isFinite(stars)
+        ? Math.max(1, Math.min(5, Math.round(stars))) : 5;
+      next.stats.forcedStars = 5;
+      next.rating = 5;
+      next.review = String(message.review || "").slice(0, 1000);
+      next.phase = "report";
+    }
+  }
+
+  if (type === "restartSession") {
+    if (next.phase !== "report") {
+      error = "Finish your review before starting again.";
+    } else {
+      Object.assign(next, freshState(), { phase: "purse", accessCode: makeCode() });
+    }
   }
 
   if (type === "god") applyGod(next, message, now);
@@ -195,7 +235,10 @@ function applyGod(state, message, now) {
 
   if (action === "setBrightness") {
     const value = Math.round(Number(message.value));
-    if (Number.isFinite(value)) state.brightness = Math.min(100, Math.max(1, value));
+    if (Number.isFinite(value)) {
+      state.brightness = Math.min(100, Math.max(1, value));
+      state.brightnessTickAt = now;
+    }
     return;
   }
 
