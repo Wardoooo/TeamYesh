@@ -2,7 +2,7 @@
 // Pure session rules. background.js applies the result. No chrome APIs here,
 // so the rules can be checked without loading the extension.
 
-import { CONFIG, ENDING_PHASES, STAT_KEYS } from "./config.js";
+import { CONFIG, ENDING_PHASES, STAT_KEYS, secondsForPesos } from "./config.js";
 
 const PIPE = [
   "store",
@@ -65,7 +65,7 @@ export function makeCode() {
 }
 
 function sessionMs(inserted) {
-  return inserted * CONFIG.secondsPerCoin * 1000;
+  return secondsForPesos(inserted) * 1000;
 }
 
 function armSession(state, now) {

@@ -1,17 +1,17 @@
-// Owner: M1
-// Drag a peso onto the metal slot. The code is not printed.
-// It blinks on the machine LED. ₱1 = 60s, ₱5 = 5 min, ₱10 = 10 min.
+// Drag a peso from the tarpaulin into the metal slot.
+// The LED holds the wifi name, the access code, and the time due.
+// ₱1 = 60s, ₱5 = 3 min, ₱10 = 5 min. The total picks the rate.
 
-import { CONFIG } from "../shared/config.js";
+import { secondsForPesos } from "../shared/config.js";
 import { send, onState } from "../shared/api.js";
 import { play } from "../shared/sfx.js";
 import { mountPageTools } from "./god.js";
 
 const led = document.getElementById("led");
+const ledCode = document.getElementById("led-code");
+const ledTime = document.getElementById("led-time");
 const slot = document.getElementById("slot");
-const balance = document.getElementById("balance");
-const message = document.getElementById("message");
-const next = document.getElementById("next");
+const toast = document.querySelector(".toast");
 
 mountPageTools(document.getElementById("tools"));
 send({ type: "entered", page: "purse" });
@@ -20,20 +20,17 @@ let latest = null;
 
 onState((state) => {
   latest = state;
-  const seconds = state.inserted * CONFIG.secondsPerCoin;
-  balance.textContent = `Inserted: ₱${state.inserted} · Time: ${format(seconds)}`;
   paintLed(state);
 });
 
-next.addEventListener("click", async (event) => {
-  event.preventDefault();
+document.getElementById("connect").addEventListener("click", async () => {
   if (!latest || latest.inserted < 1) {
-    message.textContent = "The slot is still hungry.";
+    if (toast) toast.textContent = "Insert a coin first.";
     return;
   }
   const result = await send({ type: "entered", page: "portal" });
   if (result && result.ok === false) {
-    message.textContent = result.error || "Not yet.";
+    if (toast) toast.textContent = result.error || "Not yet.";
     return;
   }
   window.location.href = "portal.html";
@@ -44,19 +41,17 @@ document.querySelectorAll(".peso").forEach((coin) => {
 });
 
 function paintLed(state) {
-  if (!state.inserted) {
-    led.classList.remove("code-on");
-    led.innerHTML = "<div>WIFI NAME:</div><div>PISO_WIFI</div><div>PHP 1.00 = 30 MINS*</div>";
-    return;
-  }
-  const seconds = state.inserted * CONFIG.secondsPerCoin;
-  led.classList.add("code-on");
-  led.innerHTML = `<div>CODE</div><div>${state.accessCode || "------"}</div><div>PHP ${state.inserted}.00 = ${format(seconds)}</div>`;
+  const inserted = Number(state.inserted || 0);
+  const seconds = secondsForPesos(inserted);
+  const showCode = inserted > 0 && state.accessCode;
+  ledCode.hidden = !showCode;
+  ledCode.textContent = showCode ? state.accessCode : "";
+  ledTime.textContent = `PHP ${inserted.toFixed(2)} = ${format(seconds)}`;
+  led.classList.toggle("code-on", Boolean(showCode));
 }
 
 function startDrag(coin, event) {
   event.preventDefault();
-  const home = coin.parentElement;
   const start = coin.getBoundingClientRect();
   const shiftX = event.clientX - start.left;
   const shiftY = event.clientY - start.top;
@@ -64,6 +59,8 @@ function startDrag(coin, event) {
   coin.style.position = "fixed";
   coin.style.left = `${start.left}px`;
   coin.style.top = `${start.top}px`;
+  coin.style.width = `${start.width}px`;
+  coin.style.height = `${start.height}px`;
   coin.style.margin = "0";
   try { coin.setPointerCapture(event.pointerId); } catch (err) { /* still follow the pointer */ }
 
@@ -90,39 +87,20 @@ function startDrag(coin, event) {
     const dropped = overlaps(coin.getBoundingClientRect(), slot.getBoundingClientRect())
       || overlaps(finger, slot.getBoundingClientRect());
     slot.classList.remove("hot");
-    if (!dropped) {
-      release(coin);
-      return;
-    }
+    release(coin);
+    if (!dropped) return;
     const result = await send({ type: "insertCoin", amount: Number(coin.dataset.amount) });
     if (!result?.ok) {
-      release(coin);
-      message.textContent = result?.offline
-        ? "Open this from the extension icon so the coin is counted."
-        : (result?.error || "Coin jammed.");
+      if (toast) toast.textContent = result?.error || "Coin jammed.";
       return;
     }
     play("coin");
-    message.textContent = "";
-    swallow(coin, home);
+    if (toast) toast.textContent = "";
+    paintLed(result.state);
   }
 
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
-}
-
-function swallow(coin, home) {
-  const slit = document.getElementById("slit").getBoundingClientRect();
-  coin.style.transition = "left 160ms linear, top 160ms linear, transform 160ms linear";
-  coin.style.left = `${slit.left}px`;
-  coin.style.top = `${slit.top}px`;
-  coin.style.transform = "scale(0.15)";
-  setTimeout(() => {
-    coin.style.transition = "";
-    coin.style.transform = "";
-    release(coin);
-    home.append(coin);
-  }, 170);
 }
 
 function release(coin) {
@@ -130,6 +108,8 @@ function release(coin) {
   coin.style.position = "";
   coin.style.left = "";
   coin.style.top = "";
+  coin.style.width = "";
+  coin.style.height = "";
   coin.style.margin = "";
 }
 

@@ -2,7 +2,7 @@
 // The digits are the real session tools. The red GOD MODE button is a decoy.
 // Overlay has its own copy for real web pages. Extension pages use this one.
 
-import { CONFIG } from "../shared/config.js";
+import { secondsForPesos } from "../shared/config.js";
 import { send, onState, canUseExtension } from "../shared/api.js";
 
 export function mountPageTools(parent) {
@@ -62,7 +62,7 @@ export function mountPageTools(parent) {
       time.textContent = format(Math.ceil(left / 1000));
       return;
     }
-    time.textContent = format(latest.inserted * CONFIG.secondsPerCoin);
+    time.textContent = format(secondsForPesos(latest.inserted));
   }
 }
 
