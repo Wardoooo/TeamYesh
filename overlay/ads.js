@@ -38,7 +38,7 @@ export function mount(stage, state) {
   window.addEventListener("resize", repositionCards);
 
   if (mode === "ads") {
-    showAd();
+    for (let count = 0; count < 3; count += 1) showAd();
     return;
   }
 
@@ -269,93 +269,37 @@ function appendCard(card) {
   }
 }
 
-function placeAd(card, previous = root?.lastElementChild) {
+function placeAd(card, placed = [...root.children]) {
   const margin = 12;
   const top = Math.min(72, window.innerHeight * 0.12);
+  const width = Math.max(1, Math.min(420, window.innerWidth * 0.44));
+  const height = Math.max(1, Math.min(280, (window.innerHeight - top) * 0.46));
+  const maxX = Math.max(margin, window.innerWidth - width - margin);
+  const maxY = Math.max(top, window.innerHeight - height - margin);
+  let best = { x: margin, y: top, separation: -1 };
 
-  // Ads stay smaller than the browser viewport.
-  const width = Math.max(
-    1,
-    Math.min(460, window.innerWidth * 0.45)
-  );
-
-  const height = Math.max(
-    1,
-    Math.min(320, (window.innerHeight - top) * 0.5)
-  );
-
-  const maxX = Math.max(
-    margin,
-    window.innerWidth - width - margin
-  );
-
-  const maxY = Math.max(
-    top,
-    window.innerHeight - height - margin
-  );
-
-  const clamp = (value, low, high) => {
-    return Math.min(high, Math.max(low, value));
-  };
-
-  let x = margin + Math.random() * (maxX - margin);
-  let y = top + Math.random() * (maxY - top);
-
-  if (previous) {
-    const px = parseFloat(previous.style.left);
-    const py = parseFloat(previous.style.top);
-    let found = false;
-
-    // Stay near the previous ad so the cards overlap.
-    for (let attempt = 0; attempt < 40; attempt++) {
-      x = clamp(
-        px + (Math.random() * 1.2 - 0.6) * width,
-        margin,
-        maxX
-      );
-
-      y = clamp(
-        py + (Math.random() * 1.2 - 0.6) * height,
-        top,
-        maxY
-      );
-
-      // Keep a visible portion of the previous card.
-      if (
-        Math.abs(x - px) >= width * 0.2 ||
-        Math.abs(y - py) >= height * 0.2
-      ) {
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      const direction =
-        px > (margin + maxX) / 2 ? -1 : 1;
-
-      x = clamp(
-        px + direction * width * 0.3,
-        margin,
-        maxX
-      );
-
-      y = clamp(py, top, maxY);
-    }
+  // Try spots across the whole viewport and favor the least crowded one.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const x = margin + Math.random() * (maxX - margin);
+    const y = top + Math.random() * (maxY - top);
+    const separation = Math.min(...placed.map((other) => Math.hypot(
+      (x - parseFloat(other.style.left)) / width,
+      (y - parseFloat(other.style.top)) / height
+    )));
+    if (separation > best.separation) best = { x, y, separation };
   }
 
   card.style.width = `${width}px`;
   card.style.height = `${height}px`;
-  card.style.left = `${x}px`;
-  card.style.top = `${y}px`;
+  card.style.left = `${best.x}px`;
+  card.style.top = `${best.y}px`;
 }
 
 function repositionCards() {
-  let previous = null;
-
+  const placed = [];
   for (const card of root?.children || []) {
-    placeAd(card, previous);
-    previous = card;
+    placeAd(card, placed);
+    placed.push(card);
   }
 }
 

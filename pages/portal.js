@@ -3,7 +3,6 @@
 // Give up only shows a clue.
 
 import { getState, send } from "../shared/api.js";
-import { CONFIG } from "../shared/config.js";
 import { play } from "../shared/sfx.js";
 import { mountPageTools } from "./god.js";
 
@@ -57,18 +56,7 @@ document.getElementById("yes").addEventListener("click", async () => {
   const typed = accepted || code();
   await send({ type: "entered", page: "portal" });
   const result = await send({ type: "startSession", code: typed });
-  if (result?.ok) {
-    // Extension pages do not include a tab id, so the page has to leave itself.
-    location.href = CONFIG.landingUrl;
-    return;
-  }
-  const state = await getState();
-  const alreadyLive = state?.endsAt > Date.now()
-    && ["ads", "captcha", "browsing"].includes(state.phase);
-  if (alreadyLive) {
-    location.href = CONFIG.landingUrl;
-    return;
-  }
+  if (result?.ok) return;
   terms.hidden = true;
   login.hidden = false;
   message.textContent = result?.error || "The portal only works inside the extension.";
