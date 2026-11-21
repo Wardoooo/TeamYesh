@@ -81,12 +81,17 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
     const { pathname } = new URL(request.url, "http://localhost");
     if (pathname === "/api/chat") return chat(request, response);
     const path = pathname === "/" ? "/index.html" : pathname;
+<<<<<<< HEAD
+    const type = mime[path.split(".").at(-1)];
+    if (request.method !== "GET" || !type || !/^\/(?:index\.(?:html|js)|(?:assets|css|pages|shared|overlay)\/(?:[\w-]+\/)*[\w-]+\.[a-z]+)$/.test(path)) {
+=======
     let decoded;
     try { decoded = decodeURIComponent(path); } catch { return response.writeHead(404).end(); }
     const type = mime[decoded.split(".").at(-1)];
     const code = /^\/(?:index\.(?:html|js)|page[234]\.html|(?:css|pages|shared|overlay)\/[\w-]+\.[a-z]+)$/;
     const asset = /^\/assets\/(?:img|music|sounds|videos|vendor)\/[\w ()-]+\.[a-z0-9]+$/;
     if (request.method !== "GET" || !type || !(code.test(decoded) || asset.test(decoded))) {
+>>>>>>> eb9433a0d9f2ca2dbd95b661f3a94d367abbf347
       return response.writeHead(404).end();
     }
     const file = new URL(`.${path}`, import.meta.url);
