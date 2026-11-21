@@ -65,8 +65,8 @@ body {
 }
 
 .slot.hot {
-  outline: 3px solid #fde047;
-  background: rgba(253, 224, 71, 0.28);
+  outline: none;
+  background: transparent;
 }
 
 .peso {
