@@ -134,6 +134,7 @@ function showAd() {
 
   skip.addEventListener("click", () => {
     if (skips >= CONFIG.skipCap) {
+      play("buzz");
       note.textContent = "Skip is tired.";
       return;
     }
@@ -209,6 +210,7 @@ function showBrowsingCard() {
 
   skip.addEventListener("click", () => {
     if (skips >= CONFIG.skipCap) {
+      play("buzz");
       note.textContent = "Skip is tired. The ad stays.";
       return;
     }
@@ -358,6 +360,8 @@ function startSound(ad, media) {
 
   if (typeof ad.sound === "string") {
     play(ad.sound);
+  } else {
+    play("jingle");
   }
 }
 
